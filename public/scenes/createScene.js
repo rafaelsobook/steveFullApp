@@ -38,19 +38,19 @@ export default async function createScene(_engine){
     log(box.getAbsolutePosition())
     const ground = MeshBuilder.CreateGround("asd", {width:100, height:100}, scene)
 
-    const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
-    skybox.infiniteDistance = true;
+    // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
+    // skybox.infiniteDistance = true;
  
-    // Create SkyMaterial and apply it to the skybox
-    const skyMaterial = new SkyMaterial("skyMaterial", scene);
-    skyMaterial.backFaceCulling = false;
+    // // Create SkyMaterial and apply it to the skybox
+    // const skyMaterial = new SkyMaterial("skyMaterial", scene);
+    // skyMaterial.backFaceCulling = false;
   
-    skyMaterial.inclination = 0.1; // Sun position (0 is sunrise, 0.5 is noon, 1 is sunset)
-    skyMaterial.turbidity = .5; // Lower turbidity for a clearer sky
-    skyMaterial.luminance = .9; // Higher luminance for a brighter sky
-    skyMaterial.rayleigh = 2; // Adjust the scattering of light
+    // skyMaterial.inclination = 0.1; // Sun position (0 is sunrise, 0.5 is noon, 1 is sunset)
+    // skyMaterial.turbidity = .5; // Lower turbidity for a clearer sky
+    // skyMaterial.luminance = .9; // Higher luminance for a brighter sky
+    // skyMaterial.rayleigh = 2; // Adjust the scattering of light
 
-    skybox.material = skyMaterial;
+    // skybox.material = skyMaterial;
 
     AvatarRoot = await loadAvatarContainer(scene, "avatar2.glb", SceneLoader)
 
@@ -60,7 +60,16 @@ export default async function createScene(_engine){
     await importAnimations("jump_new.glb")
     await importAnimations("walkback_anim.glb")
 
-    log(animationsGLB)
+    let sessionMode = "immersive-ar"
+
+    const xrHelper = await scene.createDefaultXRExperienceAsync({
+        floorMeshes: [ground],
+        uiOptions: {
+            sessionMode
+        },
+        optionalFeatures: true
+    })
+
     await scene.whenReadyAsync()
 
     setState("GAME")

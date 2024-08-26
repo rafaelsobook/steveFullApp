@@ -1,11 +1,28 @@
+const https = require('https');
 const http = require("http")
+const fs = require('fs')
+const path = require("path")
 const express = require("express")
 const app = express()
-const server = http.createServer(app)
+
 const {Server} = require("socket.io")
+
 const PORT = process.env.PORT || 5173
 const log = console.log
 const {generateUUID} = require("./tools.js")
+
+// HTTPS options (loading the SSL certificate and key)
+const httpsOptions = {
+    key: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.key')),
+    cert: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.crt')),
+};
+let isHttps = false
+let server
+if(isHttps){
+    server = https.createServer(httpsOptions, app)
+}else{
+    server = http.createServer(app)
+}
 
 const rooms = new Map()
 rooms.set(1, {
@@ -18,9 +35,7 @@ rooms.set(2, {
 })
 
 app.use(express.static("public"))
-// app.get('/', (req, res) => {
-//     res.json({message: "You are in Socket Server"})
-// })
+
 
 const io = new Server(server, {
     cors: { 
@@ -246,4 +261,5 @@ io.on("connection", socket => {
         console.log(socket.id)
     })
 })
+
 server.listen(PORT, () => log("TCP server is on ", PORT))
