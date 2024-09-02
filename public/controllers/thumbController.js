@@ -91,6 +91,7 @@ export function initJoyStick(socket, cam, scene, isSocketAvail) {
             if(yAddPos > 0) yAddPos = yAddPos / 60
             if(yAddPos < 0) yAddPos = yAddPos / 60
             log(`x: ${xAddPos}, y: ${yAddPos}`)
+            
             emitMove({
                 _id: myChar._id,
                 movement: { moveX: xAddPos, moveZ: yAddPos },
@@ -131,7 +132,7 @@ export function initJoyStick(socket, cam, scene, isSocketAvail) {
         emitStop({
             _id: myChar._id,
             movementName: "forward",
-            movement: { moveX: Math.sign(xAddPos), moveZ: Math.sign(yAddPos) },
+            movement: { moveX:0, moveZ:0 },
             loc: { x: cPos.x, y: cPos.y, z: cPos.z },
             direction: tPos
         })

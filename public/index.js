@@ -1,6 +1,6 @@
 const { Engine, MeshBuilder, Vector3, PointerEventTypes } = BABYLON
 import { emitAction, emitMove, emitStop, getMyDetail, initializeSocket } from './socket/socketLogic.js';
-import createScene, { getPlayersInScene } from "./scenes/createScene.js";
+import {createScene, getPlayersInScene, getScene } from "./scenes/createScene.js";
 import { initKeyControls } from './controllers/keycontroller.js';
 const log = console.log;
 
@@ -21,7 +21,9 @@ export async function main() {
 }
 
 export function getCharacter() {
+  if(!getScene()) return
   let myDetail = getMyDetail()
+  if(!myDetail) return 
   let myCharacterInScene = getPlayersInScene().find(plScene => plScene._id === myDetail._id)
   if (!myCharacterInScene) return false
   return myCharacterInScene

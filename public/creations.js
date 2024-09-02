@@ -1,19 +1,30 @@
+import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
-const { Vector3, Animation, MeshBuilder } = BABYLON
+const { Vector3, Animation, MeshBuilder, SceneLoader } = BABYLON
 const log = console.log
+
+
+
+export async function importCustomModel(_avatarUrl){
+    const scene = getScene()
+    return await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
+
+}
+
 export async function loadAvatarContainer(scene, glbName, SceneLoader) {
     return await SceneLoader.LoadAssetContainerAsync("https://models.readyplayer.me/66be713b3f3b5915e2df2b32.glb", null, scene);
 }
 export function createPlayer(detail, RootAvatar, animationsGLB, scene) {
+    log(detail)
     const { loc, dir, _id, name, _moving, movement, currentSpd } = detail
     const instance = RootAvatar.instantiateModelsToScene()
     const root = instance.rootNodes[0]
     const modelTransformNodes = root.getChildTransformNodes()
 
-    const box = scene.getMeshByName('toInstanceBox')
+    // const box = scene.getMeshByName('toInstanceBox')
 
-    if (!box) return log("main box for body not found")
+    // if (!box) return log("main box for body not found")
 
     const mainBody = MeshBuilder.CreateBox(`player.${_id}`, { height: 2 }, scene)
 
@@ -50,9 +61,6 @@ export function createPlayer(detail, RootAvatar, animationsGLB, scene) {
     })
     instance.animationGroups[0].play(true)
 
-    setInterval(() => {
-        root.rotation
-    }, 1000)
     return {
         _id,
         dir,
@@ -90,4 +98,9 @@ export async function createAvatar_Old(glbName, pos, direction, animationsGLB) {
         anim.dispose()
     })
     return { player, body, modelTransformNodes, rotationAnimation }
+}
+
+// tools
+export function setMeshesVisibility(_meshesArray, _isVisible){
+    _meshesArray.forEach(mesh => mesh.isVisible = _isVisible)
 }

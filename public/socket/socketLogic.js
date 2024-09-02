@@ -1,3 +1,4 @@
+import { importCustomModel } from "../creations.js"
 import { getState, main, setState } from "../index.js"
 import { blendAnimv2, checkPlayers, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
@@ -8,6 +9,7 @@ const listElement = document.querySelector(".room-lists")
 let socket
 let myDetail //_id, name, socketId, loc, roomNum
 let playersInServer = []
+let importedModelsInServer = []
 
 listElement.addEventListener("click", e => {
   const roomNumber = e.target.className.split(" ")[1]
@@ -37,8 +39,9 @@ export function initializeSocket() {
   })
   socket.on("player-joined", data => {
     const { newPlayer, allPlayers } = data
+
     updateAllPlayers(allPlayers)
-    log(`${newPlayer.name} has joined the room`)
+  
     checkPlayers()
   })
   socket.on('who-am-i', detail => {
@@ -51,20 +54,54 @@ export function initializeSocket() {
       main()
     }
   })
+  socket.on('scene-updated', sceneDescriptionList => {
+    const scene = getScene()
+    if(!scene) return log("scene not ready")    
+    sceneDescriptionList.forEach( desc => {
+      if(desc.type === "primitive"){
+        let model
+        let error=false
+        switch(desc.shape){
+          case "box":
+            model = MeshBuilder.CreateBox(desc.shape, { height: 2 }, scene)
+          break
+          case "cylinder":
+            model = MeshBuilder.CreateCylinder(desc.shape, { diameter: 2 }, scene)
+          break
+          default:
+            log("unsupported shape ", desc)
+            error = true
+          break
+        }
+        if(error) return
+        const pos = desc.pos
+        model.position = new Vector3(pos.x,pos.y,pos.z)
+        // rotation implement here
+        return
+      }
+      importCustomModel(desc.url).then( avatar => {
+        
+        const Root = avatar.meshes[0]
+        const pos = desc.pos
+        Root.position = new Vector3(pos.x, pos.y, pos.z)
+        // importedModelsInServer.push({...desc, body: Root})
+        // lookAr direction here
+      })
+    })
 
+  })
   // movements
   socket.on("a-player-moved", playersInRoom => {
     // log(playersInRoom)
     playersInRoom.forEach(data => {
       const playersInScene = getPlayersInScene()
       const playerThatMoved = playersInScene.find(pl => pl._id === data._id)
-      log(data)
-      if (!playerThatMoved) return
-
       if (playerThatMoved) {
         const { dir, movement } = data
+        if(movement.moveX == 0 && movement.moveZ===0) return
         const loc = playerThatMoved.mainBody.position
         const plMove = playerThatMoved.movement
+        if(movement.moveX == 0 && movement.moveZ===0) return
         if(movement.moveX !== plMove.moveX || movement.moveZ !== plMove.moveZ){
             
           rotateAnim({x:movement.moveX, y:loc.y, z: movement.moveZ}, playerThatMoved.root, playerThatMoved.rotationAnimation, getScene(), 2)  
@@ -76,6 +113,7 @@ export function initializeSocket() {
     })
   })
   socket.on("player-stopped", data => {
+    log(data)
     const playersInScene = getPlayersInScene()
     const plThatStopped = playersInScene.find(pl => pl._id === data._id)
     if (plThatStopped) {
@@ -84,6 +122,8 @@ export function initializeSocket() {
       blendAnimv2(plThatStopped, plThatStopped.anims[0], plThatStopped.anims, true)
       plThatStopped.dir = data.dir
       plThatStopped.movement = data.movement
+      plThatStopped._moving = false
+      log(data)
       if (!data.movement.moveX && !data.movement.moveZ) plThatStopped._moving = false
     }
   })
@@ -145,8 +185,9 @@ export function emitAction(actionDetail) {
   socket.emit("emit-action", actionDetail)
 }
 // tools
-function updateAllPlayers(_newPlayers) {
+function updateAllPlayers(_newPlayers, _newModels) {
   playersInServer = _newPlayers
+  // importedModelsInServer = _newModels
   log(playersInServer)
 }
 export function getMyDetail() {
@@ -154,4 +195,7 @@ export function getMyDetail() {
 }
 export function getAllPlayersInSocket() {
   return playersInServer
+}
+export function getAllImportedModelsInSocket(){
+
 }

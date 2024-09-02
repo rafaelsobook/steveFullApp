@@ -16,7 +16,7 @@ const httpsOptions = {
     key: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.key')),
     cert: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.crt')),
 };
-let isHttps = false
+let isHttps = true
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)
@@ -27,17 +27,45 @@ if (isHttps) {
 const rooms = new Map()
 rooms.set(1, {
     limit: 4,
-    players: []
+    players: [],
+    sceneDescription: [
+        {
+            _id: "1235214",
+            type: "remoteurl",
+            url: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb",
+            pos: {x:1,y:0,z:0},
+            dir: {x:0,y:0,z:0},
+        },
+        {
+            _id: "123",
+            type: "primitive",
+            shape: "box",
+            pos: {x:1.5,y:0,z:2},
+            dir: {x:0,y:0,z:0},
+        },
+        {
+            _id: "d1231x",
+            type: "primitive",
+            shape: "cylinder",
+            pos: {x:-2,y:0,z:-1},
+            dir: {x:0,y:0,z:0},
+        },
+    ]
 })
 rooms.set(2, {
     limit: 4,
-    players: []
+    players: [],
+    sceneDescription: []
 })
 
+// app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
 app.use(express.static("public"))
+const router = express.Router();
 
 
-const io = new Server(server, {
+let io = new Server(server, {
     cors: {
         origin: [
             "/",
@@ -45,13 +73,15 @@ const io = new Server(server, {
         methods: ["GET", "POST"]
     }
 })
+
 io.on("connection", socket => {
-    console.log(35, socket.id)
+    console.log(socket.id)
+    _socket = socket
     socket.emit("room-size", rooms.size)
     socket.on('joinRoom', data => {
         const roomNum = parseInt(data.roomNumber)
         const room = rooms.get(roomNum)
-        if (!room) return console.log(47, 'room number not found')
+        if (!room) return console.log(84, 'room number not found')
         if (room.limit <= room.players.length) return log(48, "players full")
 
         const playerDetail = {
@@ -83,9 +113,12 @@ io.on("connection", socket => {
         room.players.push(playerDetail)
         io.to(roomNum).emit("player-joined", {
             newPlayer: data,
-            allPlayers: rooms.get(roomNum).players
+            allPlayers: rooms.get(roomNum).players,            
         })
         socket.emit("who-am-i", playerDetail)
+        setTimeout(() => {
+            socket.emit("scene-updated", rooms.get(roomNum).sceneDescription)
+        }, 2000)
         log(`${data.name} has joined room ${roomNum}`)
         // socket.emit('player', playerDetail)
         // io.emit('players-details', players)
@@ -159,6 +192,13 @@ io.on("connection", socket => {
         }
         console.log(socket.id)
     })
+})
+app.get('/event/:roomid/', (req, res) => {
+    const url = req.query.url
+    const roomid = req.params.roomid
+    log(url,roomid)
+    res.json({roomid,url}).status(200)
+    io.to(parseInt(roomid)).emit("scene-updated", {roomid, url})
 })
 
 server.listen(PORT, () => log("TCP server is on ", PORT))

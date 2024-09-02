@@ -3,7 +3,7 @@ const { SkyMaterial,StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventT
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
 import { createPlayer, loadAvatarContainer } from '../creations.js'
-import { getState, setState } from '../index.js'
+import { getCharacter, getState, setState } from '../index.js'
 import { emitMove, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
 const log = console.log
@@ -24,21 +24,21 @@ export function getScene() {
     return scene
 }
 
-export default async function createScene(_engine) {
+export async function createScene(_engine) {
     scene = new Scene(_engine)
     const cam = new ArcRotateCamera('cam', -Math.PI / 2, 1, 10, Vector3.Zero(), scene)
     cam.attachControl(document.querySelector('canvas'), true)
     // scene.createDefaultEnvironment()
     const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
 
-    const box = MeshBuilder.CreateBox("toInstanceBox", { height: 2 }, scene)
-    const btf = MeshBuilder.CreateBox("btf", {}, scene)
-    // const btf = MeshBuilder.CreateBox("toInstanceBox", { height: 2}, scene)
-    // Set the pivot matrix
+    // const box = MeshBuilder.CreateBox("toInstanceBox", { height: 2 }, scene)
+    // const btf = MeshBuilder.CreateBox("btf", {}, scene)
+    // // const btf = MeshBuilder.CreateBox("toInstanceBox", { height: 2}, scene)
+    // // Set the pivot matrix
 
-    box.position = new Vector3(2, 1, 0)
-    box.setPivotPoint(new Vector3(0, -1, 0));
-    log(box.getAbsolutePosition())
+    // box.position = new Vector3(2, 1, 0)
+    // box.setPivotPoint(new Vector3(0, -1, 0));
+    // log(box.getAbsolutePosition())
 
     const ground = MeshBuilder.CreateGround("asd", { width: 100, height: 100 }, scene)
     const mat = new StandardMaterial("mat", scene)
@@ -86,14 +86,15 @@ export default async function createScene(_engine) {
     //     movementOrientationFollowsViewerPose: true,
     //     // orientationPreferredHandedness: "left"
     // })
-
-    initJoyStick(getSocket(), cam, scene)
-    initVrStickControls(scene, xrHelper)
-
     await scene.whenReadyAsync()
 
     setState("GAME")
     checkPlayers()
+    getCharacter()
+
+    initJoyStick(getSocket(), cam, scene)
+    initVrStickControls(scene, xrHelper)
+
     // scene.onPointerObservable.add((e) => {
     //     if (e.type === PointerEventTypes.POINTERDOWN) {
     //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
@@ -248,6 +249,7 @@ export function checkPlayers() {
     }
 }
 export function getPlayersInScene() {
+
     return players
 }
 export function playerDispose(playerDetail) {
