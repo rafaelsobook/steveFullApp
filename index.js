@@ -16,7 +16,7 @@ const httpsOptions = {
     key: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.key')),
     cert: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.crt')),
 };
-let isHttps = true
+let isHttps = false
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)
