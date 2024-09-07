@@ -24,7 +24,7 @@ export function getScene() {
     return scene
 }
 
-export async function createScene(_engine) {
+export async function createScene(_engine, _chosenAvatar) {
     scene = new Scene(_engine)
     const cam = new ArcRotateCamera('cam', -Math.PI / 2, 1, 10, Vector3.Zero(), scene)
     cam.attachControl(document.querySelector('canvas'), true)
@@ -61,7 +61,7 @@ export async function createScene(_engine) {
 
     // skybox.material = skyMaterial;
 
-    AvatarRoot = await loadAvatarContainer(scene, "avatar2.glb", SceneLoader)
+    AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)
 
     await importAnimations("idle_anim.glb")
     await importAnimations("walk_anim.glb") //1
@@ -69,7 +69,8 @@ export async function createScene(_engine) {
     await importAnimations("jump_new.glb")
     await importAnimations("walkback_anim.glb")
 
-    let sessionMode = "immersive-vr"
+    // let sessionMode = "immersive-vr"
+    let sessionMode = "inline"
 
     const xrHelper = await scene.createDefaultXRExperienceAsync({
         floorMeshes: [ground],
@@ -89,7 +90,7 @@ export async function createScene(_engine) {
     await scene.whenReadyAsync()
 
     setState("GAME")
-    checkPlayers()
+    checkPlayers() // avatarUrl of everyplayers
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)

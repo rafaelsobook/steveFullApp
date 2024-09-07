@@ -16,6 +16,7 @@ const httpsOptions = {
     key: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.key')),
     cert: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.crt')),
 };
+
 let isHttps = false
 let server
 if (isHttps) {
@@ -78,15 +79,17 @@ io.on("connection", socket => {
     console.log(socket.id)
     _socket = socket
     socket.emit("room-size", rooms.size)
+
     socket.on('joinRoom', data => {
-        const roomNum = parseInt(data.roomNumber)
+        const {name, roomNumber, avatarUrl } = data
+        const roomNum = parseInt(roomNumber)
         const room = rooms.get(roomNum)
         if (!room) return console.log(84, 'room number not found')
         if (room.limit <= room.players.length) return log(48, "players full")
 
         const playerDetail = {
             _id: generateUUID(),
-            name: data.name,
+            name: name,
             socketId: socket.id,
             loc: {
                 x: -2 + Math.random() * 3,
@@ -104,13 +107,14 @@ io.on("connection", socket => {
             },
             _actionName: undefined,
             _moving: false,
-            avatarUrl: "",
+            avatarUrl,
             roomNum: roomNum,
             controllerType: undefined, //key//joystick//vrstick//teleport
             currentSpd: 1.3,
         }
         socket.join(roomNum)
         room.players.push(playerDetail)
+
         io.to(roomNum).emit("player-joined", {
             newPlayer: data,
             allPlayers: rooms.get(roomNum).players,            

@@ -13,7 +13,7 @@ export async function importCustomModel(_avatarUrl){
 }
 
 export async function loadAvatarContainer(scene, glbName, SceneLoader) {
-    return await SceneLoader.LoadAssetContainerAsync("https://models.readyplayer.me/66be713b3f3b5915e2df2b32.glb", null, scene);
+    return await SceneLoader.LoadAssetContainerAsync(glbName, null, scene);
 }
 export function createPlayer(detail, RootAvatar, animationsGLB, scene) {
     log(detail)

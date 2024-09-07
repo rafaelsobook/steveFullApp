@@ -1,4 +1,5 @@
 import { importCustomModel } from "../creations.js"
+import { getInitialPlayer } from "../dropdown.js"
 import { getState, main, setState } from "../index.js"
 import { blendAnimv2, checkPlayers, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
@@ -12,13 +13,19 @@ let playersInServer = []
 let importedModelsInServer = []
 
 listElement.addEventListener("click", e => {
+
   const roomNumber = e.target.className.split(" ")[1]
   if (!roomNumber) return
   if (!socket) return log('socket not connected')
+  const user = getInitialPlayer()
+  if(!user) return console.warn("no selected avatar")
+
   socket.emit('joinRoom', {
-    name: `samplename${Math.random().toLocaleString().split(".")[1]}`,
-    roomNumber
+    name: user.name,
+    roomNumber,
+    avatarUrl: user.avatarUrl
   })
+  document.querySelector(".dropdown").style.display = "none"
 })
 export function getSocket() {
   return socket

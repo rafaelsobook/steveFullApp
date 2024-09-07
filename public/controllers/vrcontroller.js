@@ -4,6 +4,7 @@ import { getCharacter } from "../index.js"
 import { emitMove, emitStop } from "../socket/socketLogic.js"
 const { Vector3} = BABYLON
 const log = console.log
+
 export function initVrStickControls(scene, xr){
     let cam = xr.baseExperience.camera
     let myChar = getCharacter()
