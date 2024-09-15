@@ -76,7 +76,7 @@ let io = new Server(server, {
 })
 
 io.on("connection", socket => {
-    console.log(socket.id)
+    
     _socket = socket
     socket.emit("room-size", rooms.size)
 
@@ -132,7 +132,7 @@ io.on("connection", socket => {
     let fps = 20
     let spd = .3 / fps
     socket.on("emit-move", data => {
-        log(data)
+       
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {

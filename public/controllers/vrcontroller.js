@@ -2,26 +2,31 @@ import { displayTxt } from "../createDisplay.js"
 import { setMeshesVisibility } from "../creations.js"
 import { getCharacter } from "../index.js"
 import { emitMove, emitStop } from "../socket/socketLogic.js"
-const { Vector3} = BABYLON
+const { Vector3, WebXRFeatureName, WebXRHandJoint} = BABYLON
 const log = console.log
 
 export function initVrStickControls(scene, xr){
     let cam = xr.baseExperience.camera
     let myChar = getCharacter()
 
+    const {text1, nameMesh} = displayTxt(cam, scene)
+
+    let isTriggeredStop = false
+    let isUsingController = false
+    // for motion controllers
     xr.input.onControllerAddedObservable.add(controller => {
         controller.onMotionControllerInitObservable.add(mc => {
             myChar = getCharacter()   
             cam = xr.baseExperience.camera;
-
-            const {text1, nameMesh} = displayTxt(cam, scene)
+            const myPos = myChar.mainBody.position
+            
             nameMesh.position = cam.position;
             nameMesh.position.z += 1
             if(!myChar) return log("not found character")
             setMeshesVisibility(myChar.root.getChildren()[0].getChildren(), false)
-            cam.position.x = 0
+            cam.position.x = myPos.x
             cam.position.y = myChar.mainBody.position.y+.5
-            cam.position.z = 0
+            cam.position.z = myPos.z
             if(mc.handedness === "left"){
                 let thumbstickComponent = mc.getComponent(mc.getComponentIds()[2]);
                 log(thumbstickComponent)
@@ -48,7 +53,7 @@ export function initVrStickControls(scene, xr){
                     //     controllerType: 'key'
                     // })
                 })
-                let isTriggeredStop = false
+                
                 thumbstickComponent.onAxisValueChangedObservable.add((axes) => {
                     
                     // const axes = thumbstickComponent.axes
@@ -58,7 +63,7 @@ export function initVrStickControls(scene, xr){
                     // const frontPos = cam.getFrontPosition(2)
                     
                     // The forward direction can be calculated by transforming a forward vector
-                    let forwardDirection = new Vector3(0, 0, 1); // Forward in local space
+                    let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
                     let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
                     const cPos = myChar.mainBody.position
                     const tPos = {x:cPos.x + frontPos.x , y: 1, z:cPos.z + frontPos.z}
@@ -80,9 +85,11 @@ export function initVrStickControls(scene, xr){
                             direction: tPos,
                             controllerType: 'key'
                         })
+                        isUsingController = false
                         return isTriggeredStop = true
                     }
                     isTriggeredStop = false
+                    isUsingController = true
                     emitMove({
                         _id: myChar._id,
                         movement: { moveX: axes.x, moveZ: axes.y *-1 },
@@ -94,4 +101,62 @@ export function initVrStickControls(scene, xr){
             }
         })
     })
+
+    try {
+        const handFeature = xr.baseExperience.featuresManager.enableFeature(WebXRFeatureName.HAND_TRACKING, "latest", {
+            xrInput: xr.input
+        })
+        let rendererForHand
+        handFeature.onHandAddedObservable.add( hand => {
+            myChar = getCharacter()   
+            cam = xr.baseExperience.camera;
+            const myPos = myChar.mainBody.position
+            const side = hand.xrController.inputSource.handedness
+            cam.position.x = myPos.x
+            cam.position.y = myChar.mainBody.position.y+.5
+            cam.position.z = myPos.z
+            if(side === "left"){
+                const indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)
+                const middleTip = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_TIP)
+                scene.onBeforeRenderObservable.remove(rendererForHand)
+                rendererForHand = scene.onBeforeRenderObservable.add(() => {
+                    if(isUsingController) return
+                    const camPos = cam.getFrontPosition(2)
+                    nameMesh.position = camPos
+                    const indxAndMiddleDistance = Vector3.Distance(indxTip.position, middleTip.position)
+                    text1.text = `distance ${indxAndMiddleDistance}`
+                    let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
+                    let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
+                    const cPos = myChar.mainBody.position
+                    const tPos = {x:cPos.x + frontPos.x , y: 1, z:cPos.z + frontPos.z}
+                    if(indxAndMiddleDistance > 0.02) {
+                        
+                        if(isTriggeredStop) return
+                        emitStop({
+                            _id: myChar._id,
+                            movement: { moveX: 0, moveZ: 0 },
+                            loc: {x: cPos.x, y: cPos.y, z: cPos.z},
+                            direction: tPos,
+                            controllerType: 'key'
+                        })
+                        return isTriggeredStop = true                        
+                    }
+                    isTriggeredStop = false
+                  
+                    emitMove({
+                        _id: myChar._id,
+                        movement: { moveX: 0, moveZ: 1 },
+                        direction: tPos,
+                        controllerType: 'key'
+                    }) 
+                    cam.position.x = cPos.x
+                    cam.position.y = cPos.y+.5
+                    cam.position.z = cPos.z
+                    text1.text = `cPos ${cPos.x}, tPos: ${tPos.x}`
+                })
+            }
+        })
+    } catch (error) {
+        log(error)
+    }
 }

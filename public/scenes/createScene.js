@@ -42,7 +42,7 @@ export async function createScene(_engine, _chosenAvatar) {
 
     const ground = MeshBuilder.CreateGround("asd", { width: 100, height: 100 }, scene)
     const mat = new StandardMaterial("mat", scene)
-    const tex = new Texture("./images/tex.jpg", scene);
+    const tex = new Texture("./images/tex.png", scene);
     tex.uScale = 12
     tex.vScale = 12
     mat.diffuseTexture = tex
@@ -69,8 +69,8 @@ export async function createScene(_engine, _chosenAvatar) {
     await importAnimations("jump_new.glb")
     await importAnimations("walkback_anim.glb")
 
-    // let sessionMode = "immersive-vr"
-    let sessionMode = "inline"
+    let sessionMode = "immersive-vr"
+    // let sessionMode = "inline"
 
     const xrHelper = await scene.createDefaultXRExperienceAsync({
         floorMeshes: [ground],
@@ -244,8 +244,7 @@ export function checkPlayers() {
         totalPlayers.forEach(pl => {
             const playerInScene = players.some(plscene => plscene._id === pl._id)
             if (playerInScene) return log('player is already in scene')
-
-            players.push(createPlayer(pl, AvatarRoot, animationsGLB, scene))
+            createPlayer(pl, AvatarRoot, animationsGLB, scene).then(newP => players.push(newP))            
         })
     }
 }

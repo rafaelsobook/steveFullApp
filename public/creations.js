@@ -9,19 +9,21 @@ const log = console.log
 export async function importCustomModel(_avatarUrl){
     const scene = getScene()
     return await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
-
 }
 
 export async function loadAvatarContainer(scene, glbName, SceneLoader) {
     return await SceneLoader.LoadAssetContainerAsync(glbName, null, scene);
 }
-export function createPlayer(detail, RootAvatar, animationsGLB, scene) {
-    log(detail)
-    const { loc, dir, _id, name, _moving, movement, currentSpd } = detail
-    const instance = RootAvatar.instantiateModelsToScene()
-    const root = instance.rootNodes[0]
-    const modelTransformNodes = root.getChildTransformNodes()
 
+export async function createPlayer(detail,RootAvatar, animationsGLB, scene) {
+    log(detail)
+    const { loc, dir, _id, name, _moving, movement, currentSpd, avatarUrl } = detail
+    // const instance = RootAvatar.instantiateModelsToScene()
+    const instance = await importCustomModel(avatarUrl)
+    // const root = instance.rootNodes[0]
+    const root = instance.meshes[0]
+    const modelTransformNodes = root.getChildTransformNodes()
+    log(modelTransformNodes)
     // const box = scene.getMeshByName('toInstanceBox')
 
     // if (!box) return log("main box for body not found")
@@ -50,11 +52,15 @@ export function createPlayer(detail, RootAvatar, animationsGLB, scene) {
             //oldTarget is a transformNode
             let theNode
             modelTransformNodes.forEach(node => {
-                const nodeName = node.name.split(" ")[2]
+                // const nodeName = node.name.split(" ")[2]
+                const nodeName = node.name
                 if (nodeName === oldTarget.name) theNode = node
             })
             // log(theNode)
-            if (!theNode) return oldTarget
+            if (!theNode) {
+                console.warn("node not found")
+                return oldTarget
+            }
             return theNode
         })
         instance.animationGroups.push(clonedAnim);

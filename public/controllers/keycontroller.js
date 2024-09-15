@@ -1,6 +1,8 @@
 import { getCharacter } from "../index.js"
 import { emitAction, emitMove, emitStop, getMyDetail } from "../socket/socketLogic.js"
 const {Vector3} = BABYLON
+const log = console.log
+
 
 let movement = { moveX: 0, moveZ: 0 }
 let camDir
@@ -15,7 +17,7 @@ export function initKeyControls(scene) {
 
         let willMove = false
         let myCharacterInScene = getCharacter()
-        if (!myCharacterInScene) return
+        if (!myCharacterInScene) return log(myCharacterInScene)
         switch (keypressed) {
             case "w":
                 movement.moveZ = 1
@@ -42,7 +44,7 @@ export function initKeyControls(scene) {
         // btf.lookAt(new Vector3(tPos.x, btf.position.y, tPos.z))
         // btf.locallyTranslate(new Vector3(movement.moveX*2,0,movement.moveZ*2))
         // const btfPos = btf.position
-        
+
         emitMove({
             _id: myCharacterInScene._id,
             movement,
