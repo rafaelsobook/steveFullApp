@@ -6,7 +6,9 @@ import { createPlayer, loadAvatarContainer } from '../creations.js'
 import { getCharacter, getState, setState } from '../index.js'
 import { emitMove, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
-const log = console.log
+const log = () => {
+    console.log
+}
 
 let currentAnimation
 let newAnimation

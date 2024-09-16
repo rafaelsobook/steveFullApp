@@ -4,18 +4,29 @@ const fs = require('fs')
 const path = require("path")
 const express = require("express")
 const app = express()
-
+const config = require('./config')
 const { Server } = require("socket.io")
 
-const PORT = process.env.PORT || 5173
+const PORT = process.env.PORT || config.port
 const log = console.log
 const { generateUUID } = require("./tools.js")
 
 // HTTPS options (loading the SSL certificate and key)
-const httpsOptions = {
-    key: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.key')),
-    cert: fs.readFileSync(path.join(__dirname, 'localhost-selfsigned.crt')),
-};
+let httpsOptions = {}
+
+// Define paths for the key and cert files
+const keyPath = path.join(__dirname, 'localhost-selfsigned.key')
+const certPath = path.join(__dirname, 'localhost-selfsigned.crt')
+
+// Check if both files exist
+if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
+    httpsOptions = {
+        key: fs.readFileSync(keyPath),
+        cert: fs.readFileSync(certPath),
+    };
+} else {
+    log('Key or certificate file not found, setting httpsOptions to an empty object.')
+}
 
 let isHttps = false
 let server
@@ -128,7 +139,7 @@ io.on("connection", socket => {
         // io.emit('players-details', players)
     })
 
-    // movements 
+    // movements
     let fps = 20
     let spd = .3 / fps
     socket.on("emit-move", data => {
