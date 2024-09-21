@@ -47,13 +47,15 @@ export function initDropDown(){
             if(!avatarName) return 
             const avatar = availableAvatars.find(avatar => avatar.avatarName === avatarName)
             if(!avatar) return
-            console.log(avatar)
 
-            selectedAvatar = {...avatar, name: `samplename${Math.random().toLocaleString().split(".")[1]}` }
-            console.log(selectedAvatar)
-
-            dropdownBtn.innerHTML = selectedAvatar.avatarName
+            avatarSelected(avatar)
         }
     };
-    dropDownInitiated = true
+
+    avatarSelected(availableAvatars[2])
+}
+
+function avatarSelected(avatarDet){
+    selectedAvatar = {...avatarDet, name: `samplename${Math.random().toLocaleString().split(".")[1]}` }
+    dropdownBtn.innerHTML = selectedAvatar.avatarName
 }

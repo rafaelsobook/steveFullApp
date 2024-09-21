@@ -155,6 +155,43 @@ export function initVrStickControls(scene, xr){
                     text1.text = `cPos ${cPos.x}, tPos: ${tPos.x}`
                 })
             }
+
+            scene.onPointerObservable.add((evt) => {
+                //this code below runs 60fps
+                const pointerId = evt.event.pointerId;
+                let pickInfo = evt.pickInfo
+                if(!pickInfo) return text1.text = `not sensing anything`
+                // logXRUI(xrCam, nameMesh, text1, `pointerId ${pointerId}`)
+                if(pickInfo){
+                    const pickedMeshName = pickInfo.pickedMesh?.name
+                    if(!pickedMeshName) return text1.text = `not sensing anything`
+                    text1.text = `picked ${pickedMeshName}`
+                    
+                    
+                    if(!rHand) return  text1.text = `rHand not found`
+                    text1.text = `not found rhand`
+                    // const handCenter = rHand.getJointMesh(WebXRHandJoint.WRIST)
+                    // if(handCenter) {                    
+                    //     fire_ps.emitter = pickInfo.pickedPoint
+                    // }
+                    
+                    // if(!webxrHandObject) return logXRUI(xrCam, nameMesh, text1, `webxrHandObject not found`)
+    
+                    // logXRUI(xrCam, nameMesh, text1, `Hand Pos ${webxrHandObject.position.x}`)
+                    // box.position.y ++
+                }else{
+                    // if(!rHand) return logXRUI(xrCam, nameMesh, text1, `rHand not found`)
+                    // const handCenter = rHand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_METACARPAL)
+                    // fire_ps.emitter = handCenter
+                }
+               
+                // const xrController = xrHelper.pointerSelection.getXRControllerByPointerId(pointerId);
+                // const webxrHandObject = xrHandFeature.getHandByControllerId(xrController.uniqueId);
+        
+                // if(xrController) logXRUI(xrCam, nameMesh, text1, `MotionController Pos ${xrController.position.x}`)
+                // if(webxrHandObject) logXRUI(xrCam, nameMesh, text1, `Hand Pos ${webxrHandObject.position.x}`)
+                
+            });
         })
     } catch (error) {
         log(error)

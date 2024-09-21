@@ -1,8 +1,8 @@
-const { SkyMaterial,StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
+const { SkyMaterial,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
-import { createPlayer, loadAvatarContainer } from '../creations.js'
+import { createMesh, createPlayer, loadAvatarContainer } from '../creations.js'
 import { getCharacter, getState, setState } from '../index.js'
 import { emitMove, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
@@ -42,12 +42,18 @@ export async function createScene(_engine, _chosenAvatar) {
     // box.setPivotPoint(new Vector3(0, -1, 0));
     // log(box.getAbsolutePosition())
 
+    const plugin = new HavokPlugin(true, await HavokPhysics());
+    scene.enablePhysics(new Vector3(0, -9.8, 0), plugin);
+
     const ground = MeshBuilder.CreateGround("asd", { width: 100, height: 100 }, scene)
+    new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0}, scene)
+
     const mat = new StandardMaterial("mat", scene)
     const tex = new Texture("./images/tex.png", scene);
     tex.uScale = 12
     tex.vScale = 12
     mat.diffuseTexture = tex
+    mat.specularColor = new BABYLON.Color3(0,0,0)
     ground.material =mat
     // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
     // skybox.infiniteDistance = true;
@@ -63,7 +69,7 @@ export async function createScene(_engine, _chosenAvatar) {
 
     // skybox.material = skyMaterial;
 
-    AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)
+    // AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)
 
     await importAnimations("idle_anim.glb")
     await importAnimations("walk_anim.glb") //1
@@ -98,6 +104,31 @@ export async function createScene(_engine, _chosenAvatar) {
     initJoyStick(getSocket(), cam, scene)
     initVrStickControls(scene, xrHelper)
 
+    const decimalMaterial = new StandardMaterial('decimal', scene)
+    decimalMaterial.diffuseTexture = new Texture('./images/dragon.png', scene)
+    decimalMaterial.emissiveTexture = new Texture('./images/dragon.png', scene)
+    decimalMaterial.diffuseTexture.hasAlpha = true
+    decimalMaterial.emissiveTexture.hasAlpha = true
+    decimalMaterial.zOffset = -2
+    
+    const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
+
+    sphere.actionManager = new ActionManager(scene)
+    sphere.actionManager.registerAction(new ExecuteCodeAction(
+        ActionManager.OnPickDownTrigger, e => {
+            const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), cam)
+            const pickInfo = scene.pickWithRay(ray)
+
+            const normal = scene.activeCamera?.getForwardRay().direction.negateInPlace().normalize()
+            const decal = MeshBuilder.CreateDecal('decal', sphere, {
+                position: pickInfo.pickedPoint,
+                normal,
+                // size: decalSize,
+            })
+            decal.material = decimalMaterial
+        }
+    ))
+
     // scene.onPointerObservable.add((e) => {
     //     if (e.type === PointerEventTypes.POINTERDOWN) {
     //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
@@ -127,6 +158,7 @@ export async function createScene(_engine, _chosenAvatar) {
                 pl.root.addRotation(0,Math.PI,0)
                 pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
                 pl.mainBody.locallyTranslate(new Vector3(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ))
+                // pl.mainBody.physicsBody.setLinearVelocity(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ)
                 // pl.root.position.x = pl.mainBody.position.x
                 // pl.root.position.z = pl.mainBody.position.z
                 // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z),0,0,0)
@@ -246,7 +278,7 @@ export function checkPlayers() {
         totalPlayers.forEach(pl => {
             const playerInScene = players.some(plscene => plscene._id === pl._id)
             if (playerInScene) return log('player is already in scene')
-            createPlayer(pl, AvatarRoot, animationsGLB, scene).then(newP => players.push(newP))            
+            createPlayer(pl, animationsGLB, scene).then(newP => players.push(newP))            
         })
     }
 }

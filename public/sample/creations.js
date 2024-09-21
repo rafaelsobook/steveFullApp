@@ -1,7 +1,7 @@
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
-const { Vector3, Animation, MeshBuilder, SceneLoader } = BABYLON
+const { Vector3, Animation, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
 const log = console.log
 
 
@@ -15,20 +15,27 @@ export async function loadAvatarContainer(scene, glbName, SceneLoader) {
     return await SceneLoader.LoadAssetContainerAsync(glbName, null, scene);
 }
 
-export async function createPlayer(detail,RootAvatar, animationsGLB, scene) {
-    log(detail)
+export async function createPlayer(detail, animationsGLB, scene) {
+  
     const { loc, dir, _id, name, _moving, movement, currentSpd, avatarUrl } = detail
     // const instance = RootAvatar.instantiateModelsToScene()
     const instance = await importCustomModel(avatarUrl)
     // const root = instance.rootNodes[0]
     const root = instance.meshes[0]
     const modelTransformNodes = root.getChildTransformNodes()
-    log(modelTransformNodes)
+   
     // const box = scene.getMeshByName('toInstanceBox')
 
     // if (!box) return log("main box for body not found")
 
     const mainBody = MeshBuilder.CreateBox(`player.${_id}`, { height: 2 }, scene)
+    // const aggregatePlayer = new PhysicsAggregate(mainBody, PhysicsShapeType.BOX, { mass: 1, friction: 0.5, restitution: 0 }, scene)
+    // aggregatePlayer.body.setMotionType(PhysicsMotionType.DYNAMIC);
+    // aggregatePlayer.body.disablePreStep = false;
+    // aggregatePlayer.body.setMassProperties({
+    //     inertia: new Vector3(0, 0, 0),
+    // });
+    // aggregatePlayer.body.setCollisionCallbackEnabled(true);
 
     mainBody.position = new Vector3(loc.x, 1, loc.z)
     mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
@@ -104,6 +111,24 @@ export async function createAvatar_Old(glbName, pos, direction, animationsGLB) {
         anim.dispose()
     })
     return { player, body, modelTransformNodes, rotationAnimation }
+}
+
+// ordinary mesh
+export function createMesh(scene, pos, meshShape){
+    let mesh
+    switch(meshShape){
+        case "sphere":
+            mesh = new MeshBuilder.CreateSphere('sphere', {}, scene)
+            mesh.position = new Vector3(pos.x,pos.y,pos.z) 
+            new PhysicsAggregate(mesh, PhysicsShapeType.SPHERE, { mass: .5, friction: 0.01, restitution: .1}, scene)
+        break
+        default:
+            mesh = new MeshBuilder.CreateBox('box', {}, scene)
+            mesh.position = new Vector3(pos.x,pos.y,pos.z) 
+            new PhysicsAggregate(mesh, PhysicsShapeType.BOX, { mass: .5, friction: 0.01, restitution: .1}, scene)
+        break
+    }
+    return mesh
 }
 
 // tools
