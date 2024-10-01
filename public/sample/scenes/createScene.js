@@ -1,4 +1,4 @@
-const { SkyMaterial,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
+const { SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
@@ -26,35 +26,20 @@ export function getScene() {
     return scene
 }
 
-export async function createScene(_engine, _chosenAvatar) {
+export async function createScene(_engine) {
     scene = new Scene(_engine)
+    // scene.useRightHandedSystem = true;
     const cam = new ArcRotateCamera('cam', -Math.PI / 2, 1, 10, Vector3.Zero(), scene)
     cam.attachControl(document.querySelector('canvas'), true)
+    cam.wheelDeltaPercentage = 0.01;
+    cam.minZ = 0.01
     // scene.createDefaultEnvironment()
     const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
-
-    // const box = MeshBuilder.CreateBox("toInstanceBox", { height: 2 }, scene)
-    // const btf = MeshBuilder.CreateBox("btf", {}, scene)
-    // // const btf = MeshBuilder.CreateBox("toInstanceBox", { height: 2}, scene)
-    // // Set the pivot matrix
-
-    // box.position = new Vector3(2, 1, 0)
-    // box.setPivotPoint(new Vector3(0, -1, 0));
-    // log(box.getAbsolutePosition())
 
     const plugin = new HavokPlugin(true, await HavokPhysics());
     scene.enablePhysics(new Vector3(0, -9.8, 0), plugin);
 
-    const ground = MeshBuilder.CreateGround("asd", { width: 100, height: 100 }, scene)
-    new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0}, scene)
-
-    const mat = new StandardMaterial("mat", scene)
-    const tex = new Texture("./images/tex.png", scene);
-    tex.uScale = 12
-    tex.vScale = 12
-    mat.diffuseTexture = tex
-    mat.specularColor = new BABYLON.Color3(0,0,0)
-    ground.material =mat
+    const ground = createGround(scene)
     // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
     // skybox.infiniteDistance = true;
 
@@ -110,24 +95,25 @@ export async function createScene(_engine, _chosenAvatar) {
     decimalMaterial.diffuseTexture.hasAlpha = true
     decimalMaterial.emissiveTexture.hasAlpha = true
     decimalMaterial.zOffset = -2
-    
-    const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
 
-    sphere.actionManager = new ActionManager(scene)
-    sphere.actionManager.registerAction(new ExecuteCodeAction(
-        ActionManager.OnPickDownTrigger, e => {
-            const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), cam)
-            const pickInfo = scene.pickWithRay(ray)
+    // havok sphere
+    // const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
 
-            const normal = scene.activeCamera?.getForwardRay().direction.negateInPlace().normalize()
-            const decal = MeshBuilder.CreateDecal('decal', sphere, {
-                position: pickInfo.pickedPoint,
-                normal,
-                // size: decalSize,
-            })
-            decal.material = decimalMaterial
-        }
-    ))
+    // sphere.actionManager = new ActionManager(scene)
+    // sphere.actionManager.registerAction(new ExecuteCodeAction(
+    //     ActionManager.OnPickDownTrigger, e => {
+    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), cam)
+    //         const pickInfo = scene.pickWithRay(ray)
+
+    //         const normal = scene.activeCamera?.getForwardRay().direction.negateInPlace().normalize()
+    //         const decal = MeshBuilder.CreateDecal('decal', sphere, {
+    //             position: pickInfo.pickedPoint,
+    //             normal,
+    //             // size: decalSize,
+    //         })
+    //         decal.material = decimalMaterial
+    //     }
+    // ))
 
     // scene.onPointerObservable.add((e) => {
     //     if (e.type === PointerEventTypes.POINTERDOWN) {
@@ -163,6 +149,9 @@ export async function createScene(_engine, _chosenAvatar) {
                 // pl.root.position.z = pl.mainBody.position.z
                 // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z),0,0,0)
                 if(!pl._actionName) blendAnimv2(pl, pl.anims[1], pl.anims, true)
+            }
+            if(pl.headDirection){
+                pl.neckNode.lookAt(new Vector3(pl.headDirection.x, pl.headDirection.y, pl.headDirection.z), Math.PI,Math.PI - Math.PI/8,0, BABYLON.Space.WORLD)
             }
         })
     })
@@ -294,6 +283,26 @@ export function playerDispose(playerDetail) {
         playerToDispose.anims.forEach(anim => anim.dispose())
         playerToDispose.mainBody?.getChildren()[0].dispose()
 
+        playerToDispose.leftHandControl?.dispose()
+        playerToDispose.rightHandControl?.dispose()
+
         players = players.filter(pl => pl._id !== playerToDispose._id)
     }
+}
+
+
+// environment creations 
+function createGround(scene){
+    const ground = MeshBuilder.CreateGround("asd", { width: 100, height: 100 }, scene)
+    new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0}, scene)
+
+    const mat = new StandardMaterial("mat", scene)
+    const tex = new Texture("./images/tex.png", scene);
+    tex.uScale = 12
+    tex.vScale = 12
+    mat.diffuseTexture = tex
+    mat.specularColor = new BABYLON.Color3(0,0,0)
+    ground.material =mat
+
+    return ground
 }

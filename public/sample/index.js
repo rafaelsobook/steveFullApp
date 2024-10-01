@@ -17,7 +17,7 @@ export async function main() {
   const initialPlayer = getInitialPlayer()
   if(!initialPlayer) return console.warn("no selected avatar")
 
-  const { scene } = await createScene(engine, initialPlayer)
+  const { scene } = await createScene(engine)
 
   engine.runRenderLoop(() => {
     scene.render()

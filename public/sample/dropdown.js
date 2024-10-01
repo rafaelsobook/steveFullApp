@@ -51,7 +51,6 @@ export function initDropDown(){
             avatarSelected(avatar)
         }
     };
-
     avatarSelected(availableAvatars[2])
 }
 

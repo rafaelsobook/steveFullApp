@@ -41,27 +41,27 @@ rooms.set(1, {
     limit: 4,
     players: [],
     sceneDescription: [
-        {
-            _id: "1235214",
-            type: "remoteurl",
-            url: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb",
-            pos: {x:1,y:0,z:0},
-            dir: {x:0,y:0,z:0},
-        },
-        {
-            _id: "123",
-            type: "primitive",
-            shape: "box",
-            pos: {x:1.5,y:0,z:2},
-            dir: {x:0,y:0,z:0},
-        },
-        {
-            _id: "d1231x",
-            type: "primitive",
-            shape: "cylinder",
-            pos: {x:-2,y:0,z:-1},
-            dir: {x:0,y:0,z:0},
-        },
+        // {
+        //     _id: "1235214",
+        //     type: "remoteurl",
+        //     url: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb",
+        //     pos: {x:1,y:0,z:0},
+        //     dir: {x:0,y:0,z:0},
+        // },
+        // {
+        //     _id: "123",
+        //     type: "primitive",
+        //     shape: "box",
+        //     pos: {x:1.5,y:0,z:2},
+        //     dir: {x:0,y:0,z:0},
+        // },
+        // {
+        //     _id: "d1231x",
+        //     type: "primitive",
+        //     shape: "cylinder",
+        //     pos: {x:-2,y:0,z:-1},
+        //     dir: {x:0,y:0,z:0},
+        // },
     ]
 })
 rooms.set(2, {
@@ -116,11 +116,18 @@ io.on("connection", socket => {
                 y: 0,
                 z: 0 // facing forward
             },
+            wristPos: false,
+            wristQuat: false,
+            headDirection: false,
+            // {
+            //     left: { x: 0, y:0, z: 0, w: 1 }, 
+            //     right: { x: 0, y:0, z: 0, w: 1 } 
+            // },
             _actionName: undefined,
             _moving: false,
             avatarUrl,
             roomNum: roomNum,
-            controllerType: undefined, //key//joystick//vrstick//teleport
+            controllerType: undefined, //key//joystick//vr//teleport
             currentSpd: 1.3,
         }
         socket.join(roomNum)
@@ -143,13 +150,16 @@ io.on("connection", socket => {
     let fps = 20
     let spd = .3 / fps
     socket.on("emit-move", data => {
-       
+       const { wristPos } = data
+
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {
                 log(data.movement)
                 playerToMove.dir = data.direction
                 playerToMove.movement = data.movement
+
+                // playerToMove.wristPos = wristPos
 
                 io.to(key).emit("a-player-moved", value.players)
             }
@@ -196,6 +206,21 @@ io.on("connection", socket => {
     //     }
     // }, 1000 / fps)
 
+    // vr
+    socket.on("moving-hands", data => {
+        const { wristPos, wristQuat, headDirection } = data
+  
+        for (const [key, value] of rooms) {
+            let playerToMove = value.players.find(pl => pl._id === data._id)
+            if (playerToMove) {
+                playerToMove.wristPos = wristPos
+                playerToMove.wristQuat = wristQuat
+                playerToMove.headDirection = headDirection
+                io.to(key).emit("player-moved-hands", value.players)
+            }
+        }
+    })
+
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
             const disconnectedPlayer = value.players.find(pl => pl.socketId === socket.id)
@@ -206,6 +231,12 @@ io.on("connection", socket => {
             }
         }
         console.log(socket.id)
+    })
+
+
+    //  debugger
+    socket.on('display-debug', data => {
+        log(data)
     })
 })
 app.get('/event/:roomid/', (req, res) => {

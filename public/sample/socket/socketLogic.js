@@ -3,7 +3,7 @@ import { getInitialPlayer } from "../dropdown.js"
 import { getState, main, setState } from "../index.js"
 import { blendAnimv2, checkPlayers, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
-const { MeshBuilder, Vector3, Space } = BABYLON
+const { MeshBuilder, Vector3, Space, Quaternion } = BABYLON
 const log = console.log
 const listElement = document.querySelector(".room-lists")
 
@@ -97,6 +97,55 @@ export function initializeSocket() {
     })
 
   })
+  // VR player move hands
+  socket.on("player-moved-hands", playersInRoom => {
+    // log(playersInRoom)
+    playersInRoom.forEach(data => {
+      const playersInScene = getPlayersInScene()
+      const player = playersInScene.find(pl => pl._id === data._id)
+      if (player) {
+        player.leftHandControl.isVisible = true
+        player.rightHandControl.isVisible = true
+        if(player._id !== getMyDetail()._id){
+          const { wristPos , wristQuat, headDirection} = data
+          // log(wristPos, wristQuat)
+
+          if(!wristPos || !wristQuat){
+            player.leftHandControl.isVisible = false
+            player.rightHandControl.isVisible = false
+            return
+          }
+
+          // updating other player hand pos
+          player.leftHandControl.position.x = wristPos.left.x
+          player.leftHandControl.position.y = wristPos.left.y
+          player.leftHandControl.position.z = wristPos.left.z
+
+          player.rightHandControl.position.x = wristPos.right.x
+          player.rightHandControl.position.y = wristPos.right.y
+          player.rightHandControl.position.z = wristPos.right.z
+
+          // updating other player hand rot quat
+          player.leftHandControl.rotationQuaternion.x = wristQuat.left.x
+          player.leftHandControl.rotationQuaternion.y = wristQuat.left.y
+          player.leftHandControl.rotationQuaternion.z = wristQuat.left.z
+          player.leftHandControl.rotationQuaternion.w = wristQuat.left.w
+
+          player.rightHandControl.rotationQuaternion.x = wristQuat.right.x
+          player.rightHandControl.rotationQuaternion.y = wristQuat.right.y
+          player.rightHandControl.rotationQuaternion.z = wristQuat.right.z
+          player.rightHandControl.rotationQuaternion.w = wristQuat.right.w
+
+          if(headDirection) {
+            log(headDirection)
+            player.headDirection = headDirection
+            // player.neckNode.lookAt(new Vector3(headDirection.x, headDirection.y, headDirection.z), Math.PI,Math.PI - Math.PI/8,0, Space.WORLD)
+          }
+          
+        }
+      }
+    })
+  })
   // movements
   socket.on("a-player-moved", playersInRoom => {
     // log(playersInRoom)
@@ -104,7 +153,7 @@ export function initializeSocket() {
       const playersInScene = getPlayersInScene()
       const playerThatMoved = playersInScene.find(pl => pl._id === data._id)
       if (playerThatMoved) {
-        const { dir, movement } = data
+        const { dir, movement, wristPos } = data
         if(movement.moveX == 0 && movement.moveZ===0) return
         const loc = playerThatMoved.mainBody.position
         const plMove = playerThatMoved.movement
@@ -116,6 +165,18 @@ export function initializeSocket() {
         playerThatMoved.dir = dir
         playerThatMoved.movement = movement
         playerThatMoved._moving = true
+
+        if(playerThatMoved._id !== getMyDetail()._id){
+          playerThatMoved.leftHandControl.position.x = wristPos.left.x
+          playerThatMoved.leftHandControl.position.y = wristPos.left.y
+          playerThatMoved.leftHandControl.position.z = wristPos.left.z
+
+          playerThatMoved.rightHandControl.position.x = wristPos.right.x
+          playerThatMoved.rightHandControl.position.y = wristPos.right.y
+          playerThatMoved.rightHandControl.position.z = wristPos.right.z
+
+
+        }
       }
     })
   })

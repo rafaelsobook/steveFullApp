@@ -1,7 +1,7 @@
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
-const { Vector3, Animation, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
+const {Quaternion,Matrix, Space, Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
 const log = console.log
 
 
@@ -17,17 +17,66 @@ export async function loadAvatarContainer(scene, glbName, SceneLoader) {
 
 export async function createPlayer(detail, animationsGLB, scene) {
   
-    const { loc, dir, _id, name, _moving, movement, currentSpd, avatarUrl } = detail
+    const { loc, dir, _id, name, _moving, movement, currentSpd, avatarUrl, wristPos, wristQuat } = detail
+    
+    const ikCtrls = []
     // const instance = RootAvatar.instantiateModelsToScene()
     const instance = await importCustomModel(avatarUrl)
     // const root = instance.rootNodes[0]
     const root = instance.meshes[0]
     const modelTransformNodes = root.getChildTransformNodes()
-   
-    // const box = scene.getMeshByName('toInstanceBox')
 
-    // if (!box) return log("main box for body not found")
+    const avatar = instance.meshes[1]
+    const skeleton = instance.skeletons[0]
 
+    let neckNode
+
+    let targetPoint
+    skeleton.bones.forEach(bone => {
+        // log(bone.name)
+        if(bone.name.toLowerCase().includes("neck")){
+            // const boneNode = bone.getTransformNode()
+            neckNode = skeleton.bones[bone.getIndex()+1].getTransformNode()
+            // const boneSceneNode = scene.getTransformNodeByName(bone.name)
+            
+            // log(boneNode)
+            // log(boneSceneNode)
+
+            // createGizmo(scene, boneSceneNode, true)
+            let rotY = 0
+            // setInterval(() => {
+            //     log(`bone rotY: ${boneNode.rotationQuaternion}`)
+               
+            //     // boneNode.position.z += 1
+            // }, 500)
+            // const targetQuat = Quaternion.FromEulerVector(new Vector3(3,2,2)).normalize()
+            // boneNode.lookAt(new Vector3(1,40,1), 0,0,0, BABYLON.Space.WORLD)
+            
+            // const refBox = MeshBuilder.CreateBox("refBox", {}, scene)
+            // createGizmo(scene, refBox)
+            
+            neckNode.rotationQuaternion = Quaternion.Identity() //Quaternion.FromEulerVector(refBox.rotation)
+            // scene.registerBeforeRender(() =>{
+            //     const camDir = scene.activeCamera.getForwardRay().direction
+
+            //     neckNode.lookAt(refBox.position, Math.PI,Math.PI - Math.PI/8,0, Space.WORLD)
+
+
+            //     // const lookAt = Matrix.LookAtLH(
+            //     //     mainBody.position,
+            //     //     new Vector3(0,5,0),
+            //     //     Vector3.Up()
+            //     // ).invert();
+            //     // neckNode.rotationQuaternion = Quaternion.FromRotationMatrix( lookAt );
+
+            //     // boneNode.rotate(BABYLON.Axis.Y, rotY, BABYLON.Space.WORLD, root)
+            //     // neckNode.rotationQuaternion = Quaternion.FromEulerVector(refBox.rotation)
+            //     // rotY+= Math.PI/60
+                
+            //     // if(targetPoint)neckNode.lookAt(targetPoint, Math.PI,0,0)
+            // })
+        }
+    })
     const mainBody = MeshBuilder.CreateBox(`player.${_id}`, { height: 2 }, scene)
     // const aggregatePlayer = new PhysicsAggregate(mainBody, PhysicsShapeType.BOX, { mass: 1, friction: 0.5, restitution: 0 }, scene)
     // aggregatePlayer.body.setMotionType(PhysicsMotionType.DYNAMIC);
@@ -38,7 +87,7 @@ export async function createPlayer(detail, animationsGLB, scene) {
     // aggregatePlayer.body.setCollisionCallbackEnabled(true);
 
     mainBody.position = new Vector3(loc.x, 1, loc.z)
-    mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
+    // mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
     mainBody.isVisible = false
     mainBody.visibility = .6
 
@@ -74,9 +123,96 @@ export async function createPlayer(detail, animationsGLB, scene) {
     })
     instance.animationGroups[0].play(true)
 
+
+    // implementing IK Controller For VR
+    const bonesSelection = 
+    [
+        {name:'LeftHand' },
+        {name:'RightHand' },
+    ];
+    let leftHandControl
+    let rightHandControl    
+    bonesSelection.forEach(elem => {
+        const handMeshName = `${elem.name}.${_id}`
+        const handMesh = scene.getMeshByName(handMeshName)
+        if(handMesh) {
+            if(elem.name === "LeftHand"){
+                leftHandControl = handMesh
+            }else rightHandControl = handMesh
+            return log("hand already made")
+        }
+        // Finding Bone
+        const bone = skeleton.bones.find(bone => bone.name.includes(elem.name));
+        log(bone)
+      
+    
+        const control = MeshBuilder.CreateBox(handMeshName, { size: .05, depth: .1}, scene)
+        // const targetBone = skeleton.bones[bone.getIndex()-1]
+    
+        if(elem.name === "LeftHand"){
+            leftHandControl = control
+        }else rightHandControl = control
+
+
+        // leftHandControl.parent = avatar
+
+        // leftHandControl.rotationQuaternion = null
+        // bone.getPositionToRef(BABYLON.Space.WORLD, avatar, leftHandControl.position);
+        // leftHandControl.parent = avatar
+
+        // let handikCtrl = new BoneIKController(
+        //     avatar,
+        //     targetBone,
+        //     {
+                
+        //         poleAngle: 0,
+        //         targetMesh: control
+        //     }
+        // );
+        // // log(skeleton.bones[bone.getIndex()-1].name)
+        // // log(bone.name)
+        // ikCtrls.push(handikCtrl);
+        // handikCtrl.update()
+        // handikCtrl.maxAngle = Math.PI * .9
+
+        // bone.getPositionToRef(BABYLON.Space.WORLD, avatar, leftHandControl.position);
+    });
+
+    // to view skeleton
+    // const viewer = new Debug.SkeletonViewer(skeleton, avatar, scene, false, 1, { 
+    //     displayMode: Debug.SkeletonViewer.DISPLAY_SPHERE_AND_SPURS
+    // });
+    // viewer.isEnabled = true;
+
+    // scene.registerBeforeRender( () => {
+    //     if (ikCtrls.length > 0) {
+    //         ikCtrls.forEach(ctrl => ctrl.update());
+    //     }
+    // });
+
+    // scene.onPointerDown = () => {
+    //     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), scene.activeCamera)
+    //     const pickInfo = scene.pickWithRay(ray)
+
+    //     if(pickInfo.hit){
+    //         targetPoint = pickInfo.pickedPoint;
+    //         log(targetPoint)
+
+    //         neckNode.lookAt(targetPoint, 0,0,0)
+    //     }
+        
+    // }
+
+    leftHandControl.rotationQuaternion = Quaternion.Identity()
+    rightHandControl.rotationQuaternion = Quaternion.Identity()
+    if(!wristPos && !wristQuat) {
+        leftHandControl.isVisible = false
+        rightHandControl.isVisible = false
+    }
     return {
         _id,
         dir,
+        headDirection: false, //{x:0,y:2,z:0},
         mainBody,
         root,
         anims: instance.animationGroups,
@@ -89,6 +225,10 @@ export async function createPlayer(detail, animationsGLB, scene) {
         currentSpd,
         canRotate: true,
         weightInterval: undefined,
+
+        leftHandControl,
+        rightHandControl,
+        neckNode
     }
 }
 export async function createAvatar_Old(glbName, pos, direction, animationsGLB) {
@@ -134,4 +274,14 @@ export function createMesh(scene, pos, meshShape){
 // tools
 export function setMeshesVisibility(_meshesArray, _isVisible){
     _meshesArray.forEach(mesh => mesh.isVisible = _isVisible)
+}
+
+export function createGizmo(scene, _meshToAttached, isRotationGizmo){
+    const gizmoManager = new GizmoManager(scene,2);
+    gizmoManager.usePointerToAttachGizmos = false;
+    gizmoManager.positionGizmoEnabled = true;
+    if(_meshToAttached) gizmoManager.attachToMesh(_meshToAttached);
+    // if(_meshToAttached) gizmoManager.attachToNode(_meshToAttached)
+    gizmoManager.positionGizmoEnabled= isRotationGizmo ? false : true
+    gizmoManager.rotationGizmoEnabled = isRotationGizmo
 }
