@@ -266,6 +266,7 @@ export function initVrStickControls(scene, xr){
 
 
             if(l_wrist && r_wrist){
+                const camQ = cam.rotationQuaternion
                 socket.emit("moving-hands", {
                     _id: myChar._id,
                     wristPos: { 
@@ -276,6 +277,7 @@ export function initVrStickControls(scene, xr){
                         left: { x: lWristQuat.x, y:lWristQuat.y, z: lWristQuat.z, w: lWristQuat.w }, 
                         right: { x: rWristQuat.x, y:rWristQuat.y, z: rWristQuat.z, w: rWristQuat.w } 
                     },
+                    camQuat: {x: camQ.x, y:camQ.y, z:camQ.z},
                     headDirection: {x: camFrontWorldPos.x, y: camFrontWorldPos.y, z: camFrontWorldPos.z}
                 })
             }

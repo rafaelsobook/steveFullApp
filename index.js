@@ -28,7 +28,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     log('Key or certificate file not found, setting httpsOptions to an empty object.')
 }
 
-let isHttps = true
+let isHttps = false
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)
@@ -208,8 +208,8 @@ io.on("connection", socket => {
 
     // vr
     socket.on("moving-hands", data => {
-        const { wristPos, wristQuat, headDirection } = data
-  
+        const { wristPos, wristQuat, headDirection, camQuat } = data
+        log(camQuat)
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {
