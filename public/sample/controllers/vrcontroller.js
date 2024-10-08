@@ -125,16 +125,14 @@ export function initVrStickControls(scene, xr){
             cam.position.y = myChar.mainBody.position.y+.5
             cam.position.z = myPos.z
             
-            log(hand)
-            log(hand.xrController.inputSource)
             nameMesh.position = cam.getFrontPosition(2) 
 
-
-            // if(side === "right")  text1.text = inspectToString(side)
-            // if(side === "left")  text2.text = inspectToString(side)
-
-            if(side === "right" && r_wrist === undefined) r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
-            if(side === "left" && l_wrist === undefined) {
+            if(side === "right" && r_wrist === undefined) {
+                myChar.rHandMesh.isVisible = true
+                r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
+            }
+            if(side === "left" && l_wrist === undefined) {   
+                myChar.lHandMesh.isVisible = true                 
                 l_indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)
                 l_middleTip = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_TIP)
                 l_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
@@ -258,11 +256,11 @@ export function initVrStickControls(scene, xr){
             const lWristQuat = l_wrist.rotationQuaternion;
             const rWristQuat = r_wrist.rotationQuaternion;
 
-            myChar.leftHandControl.position = lWristPos
-            myChar.rightHandControl.position = rWristPos
+            myChar.lHand.position = lWristPos
+            myChar.rHand.position = rWristPos
 
-            myChar.leftHandControl.rotationQuaternion = lWristQuat
-            myChar.rightHandControl.rotationQuaternion = rWristQuat
+            myChar.lHand.rotationQuaternion = lWristQuat
+            myChar.rHand.rotationQuaternion = rWristQuat
 
 
             if(l_wrist && r_wrist){

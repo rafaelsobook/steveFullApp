@@ -2,7 +2,7 @@ const { SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,Phy
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
-import { createMesh, createPlayer, loadAvatarContainer } from '../creations.js'
+import { createMesh, createPlayer, importCustomModel, importModelContainer } from '../creations.js'
 import { getCharacter, getState, setState } from '../index.js'
 import { emitMove, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
@@ -21,6 +21,10 @@ let players = []
 let scene
 let AvatarRoot
 let animationsGLB = []
+let vrHands = {
+    right: undefined,
+    left: undefined
+}
 
 export function getScene() {
     return scene
@@ -61,6 +65,13 @@ export async function createScene(_engine) {
     // await importAnimations("jump_anim.glb")
     await importAnimations("jump_new.glb")
     await importAnimations("walkback_anim.glb")
+
+    const rHand = await importModelContainer(scene, './models/rightHand.glb')
+    const lHand = await importModelContainer(scene, './models/leftHand.glb')
+    vrHands = {
+        right: rHand,
+        left: lHand
+    }
 
     let sessionMode = "immersive-vr"
     // let sessionMode = "inline"
@@ -267,7 +278,7 @@ export function checkPlayers() {
         totalPlayers.forEach(pl => {
             const playerInScene = players.some(plscene => plscene._id === pl._id)
             if (playerInScene) return log('player is already in scene')
-            createPlayer(pl, animationsGLB, scene).then(newP => players.push(newP))            
+            createPlayer(pl, animationsGLB, scene, vrHands).then(newP => players.push(newP))            
         })
     }
 }

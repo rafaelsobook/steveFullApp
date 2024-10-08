@@ -47,8 +47,7 @@ export function initializeSocket() {
   socket.on("player-joined", data => {
     const { newPlayer, allPlayers } = data
 
-    updateAllPlayers(allPlayers)
-  
+    updateAllPlayers(allPlayers)  
     checkPlayers()
   })
   socket.on('who-am-i', detail => {
@@ -111,30 +110,30 @@ export function initializeSocket() {
           // log(wristPos, wristQuat)
 
           if(!wristPos || !wristQuat){
-            player.leftHandControl.isVisible = false
-            player.rightHandControl.isVisible = false
+            // player.lHand.isVisible = false
+            // player.rHand.isVisible = false
             return
           }
 
           // updating other player hand pos
-          player.leftHandControl.position.x = wristPos.left.x
-          player.leftHandControl.position.y = wristPos.left.y
-          player.leftHandControl.position.z = wristPos.left.z
+          player.lHand.position.x = wristPos.left.x
+          player.lHand.position.y = wristPos.left.y
+          player.lHand.position.z = wristPos.left.z
 
-          player.rightHandControl.position.x = wristPos.right.x
-          player.rightHandControl.position.y = wristPos.right.y
-          player.rightHandControl.position.z = wristPos.right.z
+          player.rHand.position.x = wristPos.right.x
+          player.rHand.position.y = wristPos.right.y
+          player.rHand.position.z = wristPos.right.z
 
           // updating other player hand rot quat
-          player.leftHandControl.rotationQuaternion.x = wristQuat.left.x
-          player.leftHandControl.rotationQuaternion.y = wristQuat.left.y
-          player.leftHandControl.rotationQuaternion.z = wristQuat.left.z
-          player.leftHandControl.rotationQuaternion.w = wristQuat.left.w
+          player.lHand.rotationQuaternion.x = wristQuat.left.x
+          player.lHand.rotationQuaternion.y = wristQuat.left.y
+          player.lHand.rotationQuaternion.z = wristQuat.left.z
+          player.lHand.rotationQuaternion.w = wristQuat.left.w
 
-          player.rightHandControl.rotationQuaternion.x = wristQuat.right.x
-          player.rightHandControl.rotationQuaternion.y = wristQuat.right.y
-          player.rightHandControl.rotationQuaternion.z = wristQuat.right.z
-          player.rightHandControl.rotationQuaternion.w = wristQuat.right.w
+          player.rHand.rotationQuaternion.x = wristQuat.right.x
+          player.rHand.rotationQuaternion.y = wristQuat.right.y
+          player.rHand.rotationQuaternion.z = wristQuat.right.z
+          player.rHand.rotationQuaternion.w = wristQuat.right.w
 
           if(headDirection) {
             log(headDirection)

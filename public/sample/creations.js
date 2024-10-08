@@ -11,16 +11,32 @@ export async function importCustomModel(_avatarUrl){
     return await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
 }
 
-export async function loadAvatarContainer(scene, glbName, SceneLoader) {
+export async function importModelContainer(scene, glbName) {
     return await SceneLoader.LoadAssetContainerAsync(glbName, null, scene);
 }
 
-export async function createPlayer(detail, animationsGLB, scene) {
+export async function createPlayer(detail, animationsGLB, scene, vrHands) {
   
     const { loc, dir, _id, name, _moving, movement, currentSpd, avatarUrl, wristPos, wristQuat } = detail
     
     const ikCtrls = []
     // const instance = RootAvatar.instantiateModelsToScene()
+    const rightInstance = vrHands.right.instantiateModelsToScene()
+    const leftInstance = vrHands.left.instantiateModelsToScene()
+    const rHand = rightInstance.rootNodes[0]
+    const lHand = leftInstance.rootNodes[0]
+    const rHandMesh = rHand.getChildren()[1]
+    const lhandMesh = lHand.getChildren()[1]
+    const rHandBones = rightInstance.skeletons[0].bones
+    rHandMesh.isVisible = false
+    lhandMesh.isVisible = false
+    // setInterval(() => {
+    //     rHand.position.x += .5
+    //     const thumbTip = rHandBones.find(bne => bne.name === "right-handJoint-0")
+    //     log("posX: ", thumbTip.getTransformNode().position.x, 'absX: ', thumbTip.getTransformNode().getAbsolutePosition().x)
+    // }, 500)
+    
+
     const instance = await importCustomModel(avatarUrl)
     // const root = instance.rootNodes[0]
     const root = instance.meshes[0]
@@ -87,7 +103,7 @@ export async function createPlayer(detail, animationsGLB, scene) {
     // aggregatePlayer.body.setCollisionCallbackEnabled(true);
 
     mainBody.position = new Vector3(loc.x, 1, loc.z)
-    // mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
+    mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
     mainBody.isVisible = false
     mainBody.visibility = .6
 
@@ -123,7 +139,6 @@ export async function createPlayer(detail, animationsGLB, scene) {
     })
     instance.animationGroups[0].play(true)
 
-
     // implementing IK Controller For VR
     const bonesSelection = 
     [
@@ -132,27 +147,9 @@ export async function createPlayer(detail, animationsGLB, scene) {
     ];
     let leftHandControl
     let rightHandControl    
-    bonesSelection.forEach(elem => {
-        const handMeshName = `${elem.name}.${_id}`
-        const handMesh = scene.getMeshByName(handMeshName)
-        if(handMesh) {
-            if(elem.name === "LeftHand"){
-                leftHandControl = handMesh
-            }else rightHandControl = handMesh
-            return log("hand already made")
-        }
+    bonesSelection.forEach(elem => {        
         // Finding Bone
         const bone = skeleton.bones.find(bone => bone.name.includes(elem.name));
-        log(bone)
-      
-    
-        const control = MeshBuilder.CreateBox(handMeshName, { size: .05, depth: .1}, scene)
-        // const targetBone = skeleton.bones[bone.getIndex()-1]
-    
-        if(elem.name === "LeftHand"){
-            leftHandControl = control
-        }else rightHandControl = control
-
 
         // leftHandControl.parent = avatar
 
@@ -228,6 +225,10 @@ export async function createPlayer(detail, animationsGLB, scene) {
 
         leftHandControl,
         rightHandControl,
+        rHand,
+        lHand,
+        rHandMesh,
+        lhandMesh,
         neckNode
     }
 }
