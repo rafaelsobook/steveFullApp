@@ -64,6 +64,67 @@ export function initializeSocket() {
     const scene = getScene()
     if(!scene) return log("scene not ready")    
     sceneDescriptionList.forEach( desc => {
+
+      if(desc.type === "hlsurl"){
+        const engine = scene.getEngine()
+        // Create the video element
+        var video = document.createElement("video");
+        video.autoplay = true;
+        video.playsInline = true;
+        video.src = desc.url;
+
+        // Append the video element to the body
+        document.body.appendChild(video);
+        console.log("Adding HTML video element");
+
+        // This is where you create and manipulate meshes
+        var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+        // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+        TV.position = new Vector3(desc.pos.x,desc.pos.y, desc.pos.z)
+        TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+        TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+        TV.actionManager = new BABYLON.ActionManager(scene);
+
+   
+        // Video material
+        const videoMat = new BABYLON.StandardMaterial("textVid", scene);
+        var video = document.querySelector('video');
+        var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+
+        videoMat.backFaceCulling = false;
+        videoMat.diffuseTexture = videoTexture;
+        videoMat.emissiveColor = BABYLON.Color3.White();
+        TV.material = videoMat;
+        var htmlVideo = videoTexture.video;
+
+        if (Hls.isSupported()) {
+            var hls = new Hls();
+            hls.loadSource(desc.url);
+            hls.attachMedia(video);
+            engine.hideLoadingUI();
+            hls.on(Hls.Events.MANIFEST_PARSED,function() {
+                TV.actionManager.registerAction(
+                    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+                    function(event) {
+                        htmlVideo.play();
+                    })
+                );
+            });
+        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+            video.src = desc.url;
+            engine.hideLoadingUI();
+            video.addEventListener('loadedmetadata',function() {
+                TV.actionManager.registerAction(
+                    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+                    function(event) {
+                        htmlVideo.play();
+                    })
+                );
+            });
+        }
+        
+      }
+    
       if(desc.type === "primitive"){
         let model
         let error=false
@@ -83,16 +144,16 @@ export function initializeSocket() {
         const pos = desc.pos
         model.position = new Vector3(pos.x,pos.y,pos.z)
         // rotation implement here
-        return
       }
-      importCustomModel(desc.url).then( avatar => {
-        
-        const Root = avatar.meshes[0]
-        const pos = desc.pos
-        Root.position = new Vector3(pos.x, pos.y, pos.z)
-        // importedModelsInServer.push({...desc, body: Root})
-        // lookAr direction here
-      })
+      if(desc.type === "remoteurl"){
+        importCustomModel(desc.url).then( avatar => {        
+          const Root = avatar.meshes[0]
+          const pos = desc.pos
+          Root.position = new Vector3(pos.x, pos.y, pos.z)
+          // importedModelsInServer.push({...desc, body: Root})
+          // lookAr direction here
+        })
+      }
     })
 
   })
@@ -103,8 +164,8 @@ export function initializeSocket() {
       const playersInScene = getPlayersInScene()
       const player = playersInScene.find(pl => pl._id === data._id)
       if (player) {
-        player.leftHandControl.isVisible = true
-        player.rightHandControl.isVisible = true
+        // player.leftHandControl.isVisible = true
+        // player.rightHandControl.isVisible = true
         if(player._id !== getMyDetail()._id){
           const { wristPos , wristQuat, headDirection} = data
           // log(wristPos, wristQuat)
@@ -166,13 +227,13 @@ export function initializeSocket() {
         playerThatMoved._moving = true
 
         if(playerThatMoved._id !== getMyDetail()._id){
-          playerThatMoved.leftHandControl.position.x = wristPos.left.x
-          playerThatMoved.leftHandControl.position.y = wristPos.left.y
-          playerThatMoved.leftHandControl.position.z = wristPos.left.z
+          // playerThatMoved.leftHandControl.position.x = wristPos.left.x
+          // playerThatMoved.leftHandControl.position.y = wristPos.left.y
+          // playerThatMoved.leftHandControl.position.z = wristPos.left.z
 
-          playerThatMoved.rightHandControl.position.x = wristPos.right.x
-          playerThatMoved.rightHandControl.position.y = wristPos.right.y
-          playerThatMoved.rightHandControl.position.z = wristPos.right.z
+          // playerThatMoved.rightHandControl.position.x = wristPos.right.x
+          // playerThatMoved.rightHandControl.position.y = wristPos.right.y
+          // playerThatMoved.rightHandControl.position.z = wristPos.right.z
 
 
         }

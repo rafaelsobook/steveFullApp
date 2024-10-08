@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+    <title>Video Chat Application</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.js"></script>
+    <link href="./styles.css" rel="stylesheet" />
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <style>
+        html, body {
+            overflow: hidden;
+            width: 100%;
+            height: 100%;
+            margin: 0;
+            padding: 0;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+            touch-action: none;
+        }
+
+        #canvasZone {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+<div id="video-chat-lobby">
+    <h2 class="text">Video Chat Application</h2>
+    <input id="roomName" type="text" placeholder="Room Name" />
+    <h3>Join with:</h3>
+    <div id="join-options">
+        <button id="joinCamera">Camera</button>
+        <button id="joinScreen">Screen Share</button>
+        <button id="joinAudio">Audio Only</button>
+    </div>
+    <h3>Camera Selection (for camera join):</h3>
+    <select id="cameraSelect"></select>
+</div>
+<div id="video-chat-room" style="display:none;">
+    <video id="user-video" muted="muted"></video>
+    <video id="peer-video"></video>
+    <div id="audio-only-label" style="display:none;">Audio Only</div>
+</div>
+
+<div class="btn-group" id="btn-group" style="display: none;">
+    <button id="muteButton">Mute</button>
+    <button id="leaveRoomButton">Leave Room</button>
+    <button id="toggleMediaButton">Switch Media</button>
+</div>
+<div id="canvasZone"><canvas id="renderCanvas"></canvas></div>
+<script>
+    var canvas = document.getElementById("renderCanvas");
+
+    var startRenderLoop = function (engine, canvas) {
+        engine.runRenderLoop(function () {
+            if (sceneToRender && sceneToRender.activeCamera) {
+                sceneToRender.render();
+            }
+        });
+    }
+
+    var engine = null;
+    var scene = null;
+    var sceneToRender = null;
+    var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
+    var url = "https://cdn.jsdelivr.net/npm/hls.js@latest";
+    var s = document.createElement("script");
+    s.type = "text/javascript";
+    s.src = url;
+    document.head.appendChild(s);
+
+    var createScene = function () {
+
+        engine.displayLoadingUI();
+        var stream1 = "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8";
+
+        // Create the video element
+        var video = document.createElement("video");
+        video.autoplay = true;
+        video.playsInline = true;
+        video.src = stream1;
+
+        // Append the video element to the body
+        document.body.appendChild(video);
+        console.log("Adding HTML video element");
+        // Create the scene space
+        var scene = new BABYLON.Scene(engine);
+
+        // Add a camera to the scene and attach it to the canvas
+        // var camera = new BABYLON.ArcRotateCamera("Camera", Math.PI / 2, Math.PI / 2, 2, BABYLON.Vector3.Zero(), scene);
+        var camera = new BABYLON.FreeCamera("Camera", new BABYLON.Vector3(0, 0, -2), scene);
+        camera.attachControl(canvas, true);
+
+        // Add lights to the scene
+        var light = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(0, -1.5, 0), scene);
+
+        // This is where you create and manipulate meshes
+        var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+        // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+        TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+        TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+        TV.actionManager = new BABYLON.ActionManager(scene);
+
+        s.onload = function() {
+            // Video material
+            videoMat = new BABYLON.StandardMaterial("textVid", scene);
+            var video = document.querySelector('video');
+            var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+
+            videoMat.backFaceCulling = false;
+            videoMat.diffuseTexture = videoTexture;
+            videoMat.emissiveColor = BABYLON.Color3.White();
+            TV.material = videoMat;
+            var htmlVideo = videoTexture.video;
+
+            if (Hls.isSupported()) {
+                var hls = new Hls();
+                hls.loadSource(stream1);
+                hls.attachMedia(video);
+                engine.hideLoadingUI();
+                hls.on(Hls.Events.MANIFEST_PARSED,function() {
+                    TV.actionManager.registerAction(
+                        new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+                        function(event) {
+                            htmlVideo.play();
+                        })
+                    );
+                });
+            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                video.src = stream1;
+                engine.hideLoadingUI();
+                video.addEventListener('loadedmetadata',function() {
+                    TV.actionManager.registerAction(
+                        new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+                        function(event) {
+                            htmlVideo.play();
+                        })
+                    );
+                });
+            }
+        }
+        return scene;
+    };
+            window.initFunction = async function() {
+
+
+
+                var asyncEngineCreation = async function() {
+                    try {
+                    return createDefaultEngine();
+                    } catch(e) {
+                    console.log("the available createEngine function failed. Creating the default engine instead");
+                    return createDefaultEngine();
+                    }
+                }
+
+                window.engine = await asyncEngineCreation();
+    if (!engine) throw 'engine should not be null.';
+    startRenderLoop(engine, canvas);
+    window.scene = createScene();};
+    initFunction().then(() => {sceneToRender = scene
+    });
+
+    // Resize
+    window.addEventListener("resize", function () {
+        engine.resize();
+    });
+</script>
+</body>
+<script src="https://cdn.socket.io/socket.io-3.0.1.min.js"></script>
+<script src="./chat.js"></script>
+</html>
+</html>

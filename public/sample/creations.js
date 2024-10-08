@@ -200,11 +200,11 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         
     // }
 
-    leftHandControl.rotationQuaternion = Quaternion.Identity()
-    rightHandControl.rotationQuaternion = Quaternion.Identity()
+    // leftHandControl.rotationQuaternion = Quaternion.Identity()
+    // rightHandControl.rotationQuaternion = Quaternion.Identity()
     if(!wristPos && !wristQuat) {
-        leftHandControl.isVisible = false
-        rightHandControl.isVisible = false
+        // leftHandControl.isVisible = false
+        // rightHandControl.isVisible = false
     }
     return {
         _id,

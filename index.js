@@ -41,6 +41,13 @@ rooms.set(1, {
     limit: 4,
     players: [],
     sceneDescription: [
+        {
+            _id: "sad12342",
+            type: "hlsurl",
+            url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
+            pos: {x:1,y:1,z:2},
+            dir: {x:0,y:0,z:0},
+        },
         // {
         //     _id: "1235214",
         //     type: "remoteurl",
@@ -238,6 +245,57 @@ io.on("connection", socket => {
     socket.on('display-debug', data => {
         log(data)
     })
+
+    // Video and Audio
+    socket.on("join", function (roomName) {
+        let rooms2 = io.sockets.adapter.rooms;
+        let room = rooms2.get(roomName);
+
+        //room == undefined when no such room exists.
+        if (room == undefined) {
+          socket.join(roomName);
+          socket.emit("created");
+        } else if (room.size == 1) {
+          //room.size == 1 when one person is inside the room.
+          socket.join(roomName);
+          socket.emit("joined");
+        } else {
+          //when there are already two people inside the room.
+          socket.emit("full");
+        }
+        console.log(rooms);
+    });
+
+    //Triggered when the person who joined the room is ready to communicate.
+    socket.on("ready", function (roomName) {
+        socket.broadcast.to(roomName).emit("ready"); //Informs the other peer in the room.
+    });
+
+    //Triggered when server gets an icecandidate from a peer in the room.
+
+    socket.on("candidate", function (candidate, roomName) {
+        console.log(candidate);
+        socket.broadcast.to(roomName).emit("candidate", candidate); //Sends Candidate to the other peer in the room.
+    });
+
+    //Triggered when server gets an offer from a peer in the room.
+
+    socket.on("offer", function (offer, roomName) {
+        socket.broadcast.to(roomName).emit("offer", offer); //Sends Offer to the other peer in the room.
+    });
+
+    //Triggered when server gets an answer from a peer in the room.
+
+    socket.on("answer", function (answer, roomName) {
+        socket.broadcast.to(roomName).emit("answer", answer); //Sends Answer to the other peer in the room.
+    });
+
+    //Triggered when peer leaves the room.
+
+    socket.on("leave", function (roomName) {
+        socket.leave(roomName);
+        socket.broadcast.to(roomName).emit("leave");
+    });
 })
 app.get('/event/:roomid/', (req, res) => {
     const url = req.query.url
