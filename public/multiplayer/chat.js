@@ -4,8 +4,8 @@ let divVideoChat = document.getElementById("video-chat-room");
 let joinCameraButton = document.getElementById("joinCamera");
 let joinScreenButton = document.getElementById("joinScreen");
 let joinAudioButton = document.getElementById("joinAudio");
-let userVideo = document.getElementById("user-video");
-let peerVideo = document.getElementById("peer-video");
+// let userVideo = document.getElementById("user-video");
+// let peerVideo = document.getElementById("peer-video");
 let audioOnlyLabel = document.getElementById("audio-only-label");
 let roomInput = document.getElementById("roomName");
 let cameraSelect = document.getElementById('cameraSelect');
@@ -15,12 +15,14 @@ let rtcPeerConnection;
 let userStream;
 
 let divButtonGroup = document.getElementById("btn-group");
-let muteButton = document.getElementById("muteButton");
-let toggleMediaButton = document.getElementById("toggleMediaButton");
-let leaveRoomButton = document.getElementById("leaveRoomButton");
+// let muteButton = document.getElementById("muteButton");
+// let toggleMediaButton = document.getElementById("toggleMediaButton");
+// let leaveRoomButton = document.getElementById("leaveRoomButton");
 
-let muteFlag = false;
+// let muteFlag = false;
 let mediaType = "camera"; // can be "camera", "screen", or "audio"
+let userVideo;
+let peerVideos = []
 
 let iceServers = {
   iceServers: [
@@ -44,88 +46,88 @@ function joinRoom(type) {
   }
 }
 
-muteButton.addEventListener("click", function () {
-  muteFlag = !muteFlag;
-  if (muteFlag) {
-    userStream.getAudioTracks()[0].enabled = false;
-    muteButton.textContent = "Unmute";
-  } else {
-    userStream.getAudioTracks()[0].enabled = true;
-    muteButton.textContent = "Mute";
-  }
-});
+// muteButton.addEventListener("click", function () {
+//   muteFlag = !muteFlag;
+//   if (muteFlag) {
+//     userStream.getAudioTracks()[0].enabled = false;
+//     muteButton.textContent = "Unmute";
+//   } else {
+//     userStream.getAudioTracks()[0].enabled = true;
+//     muteButton.textContent = "Mute";
+//   }
+// });
 
-toggleMediaButton.addEventListener("click", function () {
-  switch (mediaType) {
-    case "camera":
-      switchToScreenShare();
-      break;
-    case "screen":
-      switchToAudioOnly();
-      break;
-    case "audio":
-      switchToCamera();
-      break;
-  }
-});
+// toggleMediaButton.addEventListener("click", function () {
+//   switch (mediaType) {
+//     case "camera":
+//       switchToScreenShare();
+//       break;
+//     case "screen":
+//       switchToAudioOnly();
+//       break;
+//     case "audio":
+//       switchToCamera();
+//       break;
+//   }
+// });
 
-leaveRoomButton.addEventListener("click", function () {
-  socket.emit("leave", roomName);
-  divVideoChatLobby.style.display = "block";
-  divButtonGroup.style.display = "none";
-  divVideoChat.style.display = "none";
+// leaveRoomButton.addEventListener("click", function () {
+//   socket.emit("leave", roomName);
+//   divVideoChatLobby.style.display = "block";
+//   divButtonGroup.style.display = "none";
+//   divVideoChat.style.display = "none";
 
-  if (userVideo.srcObject) {
-    userVideo.srcObject.getTracks().forEach(track => track.stop());
-  }
-  if (peerVideo.srcObject) {
-    peerVideo.srcObject.getTracks().forEach(track => track.stop());
-  }
+//   if (userVideo.srcObject) {
+//     userVideo.srcObject.getTracks().forEach(track => track.stop());
+//   }
+//   if (peerVideo.srcObject) {
+//     peerVideo.srcObject.getTracks().forEach(track => track.stop());
+//   }
 
-  if (rtcPeerConnection) {
-    rtcPeerConnection.ontrack = null;
-    rtcPeerConnection.onicecandidate = null;
-    rtcPeerConnection.close();
-    rtcPeerConnection = null;
-  }
-});
+//   if (rtcPeerConnection) {
+//     rtcPeerConnection.ontrack = null;
+//     rtcPeerConnection.onicecandidate = null;
+//     rtcPeerConnection.close();
+//     rtcPeerConnection = null;
+//   }
+// });
 
-function switchToScreenShare() {
-  navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
-    .then(function(screenStream) {
-      replaceMediaStream(screenStream);
-      mediaType = "screen";
-      toggleMediaButton.textContent = "Switch to Audio Only";
-      audioOnlyLabel.style.display = "none";
-    })
-    .catch(handleMediaError);
-}
+// function switchToScreenShare() {
+//   navigator.mediaDevices.getDisplayMedia({ video: true, audio: true })
+//     .then(function(screenStream) {
+//       replaceMediaStream(screenStream);
+//       mediaType = "screen";
+//       toggleMediaButton.textContent = "Switch to Audio Only";
+//       audioOnlyLabel.style.display = "none";
+//     })
+//     .catch(handleMediaError);
+// }
 
-function switchToAudioOnly() {
-  navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(function(audioStream) {
-      const simulatedStream = createSimulatedVideoStream(audioStream);
-      replaceMediaStream(simulatedStream);
-      mediaType = "audio";
-      toggleMediaButton.textContent = "Switch to Camera";
-      audioOnlyLabel.style.display = "block";
-    })
-    .catch(handleMediaError);
-}
+// function switchToAudioOnly() {
+//   navigator.mediaDevices.getUserMedia({ audio: true })
+//     .then(function(audioStream) {
+//       const simulatedStream = createSimulatedVideoStream(audioStream);
+//       replaceMediaStream(simulatedStream);
+//       mediaType = "audio";
+//       toggleMediaButton.textContent = "Switch to Camera";
+//       audioOnlyLabel.style.display = "block";
+//     })
+//     .catch(handleMediaError);
+// }
 
-function switchToCamera() {
-  navigator.mediaDevices.getUserMedia({
-    audio: true,
-    video: { width: 500, height: 500, deviceId: { exact: cameraSelect.value } }
-  })
-    .then(function(cameraStream) {
-      replaceMediaStream(cameraStream);
-      mediaType = "camera";
-      toggleMediaButton.textContent = "Switch to Screen Share";
-      audioOnlyLabel.style.display = "none";
-    })
-    .catch(handleMediaError);
-}
+// function switchToCamera() {
+//   navigator.mediaDevices.getUserMedia({
+//     audio: true,
+//     video: { width: 500, height: 500, deviceId: { exact: cameraSelect.value } }
+//   })
+//     .then(function(cameraStream) {
+//       replaceMediaStream(cameraStream);
+//       mediaType = "camera";
+//       toggleMediaButton.textContent = "Switch to Screen Share";
+//       audioOnlyLabel.style.display = "none";
+//     })
+//     .catch(handleMediaError);
+// }
 
 function createSimulatedVideoStream(audioStream) {
   const canvas = document.createElement('canvas');
@@ -155,32 +157,32 @@ function createSimulatedVideoStream(audioStream) {
   return videoStream;
 }
 
-function replaceMediaStream(newStream) {
-  userStream.getTracks().forEach(track => track.stop());
-  userStream = newStream;
-  userVideo.srcObject = newStream;
+// function replaceMediaStream(newStream) {
+//   userStream.getTracks().forEach(track => track.stop());
+//   userStream = newStream;
+//   userVideo.srcObject = newStream;
 
-  const audioTrack = newStream.getAudioTracks()[0];
-  const videoTrack = newStream.getVideoTracks()[0];
+//   const audioTrack = newStream.getAudioTracks()[0];
+//   const videoTrack = newStream.getVideoTracks()[0];
 
-  if (rtcPeerConnection) {
-    const senders = rtcPeerConnection.getSenders();
-    const audioSender = senders.find(sender => sender.track && sender.track.kind === "audio");
-    const videoSender = senders.find(sender => sender.track && sender.track.kind === "video");
+//   if (rtcPeerConnection) {
+//     const senders = rtcPeerConnection.getSenders();
+//     const audioSender = senders.find(sender => sender.track && sender.track.kind === "audio");
+//     const videoSender = senders.find(sender => sender.track && sender.track.kind === "video");
 
-    if (audioSender) {
-      audioSender.replaceTrack(audioTrack);
-    } else {
-      rtcPeerConnection.addTrack(audioTrack, newStream);
-    }
+//     if (audioSender) {
+//       audioSender.replaceTrack(audioTrack);
+//     } else {
+//       rtcPeerConnection.addTrack(audioTrack, newStream);
+//     }
 
-    if (videoSender) {
-      videoSender.replaceTrack(videoTrack);
-    } else {
-      rtcPeerConnection.addTrack(videoTrack, newStream);
-    }
-  }
-}
+//     if (videoSender) {
+//       videoSender.replaceTrack(videoTrack);
+//     } else {
+//       rtcPeerConnection.addTrack(videoTrack, newStream);
+//     }
+//   }
+// }
 
 socket.on("created", function () {
   creator = true;
@@ -325,7 +327,7 @@ function setUpCamera(scene, stream, _id, pos){
           })
       );
   });
-  
+  return video
 }
 function setUpStream(stream) {
 
@@ -341,7 +343,7 @@ function setUpStream(stream) {
   //   {x:4,y:1,z:4}  
   // )
 
-  setUpCamera(
+  userVideo = setUpCamera(
     scene, 
     stream, 
     "234dfsca23",
@@ -361,11 +363,7 @@ function setUpStream(stream) {
   }
 
   socket.emit("ready", roomName);
-
-
 }
-
-
 
 function handleMediaError(err) {
   console.error(err);
@@ -426,9 +424,9 @@ socket.on("answer", function (answer) {
 
 socket.on("leave", function () {
   creator = true;
-  if (peerVideo.srcObject) {
-    peerVideo.srcObject.getTracks().forEach(track => track.stop());
-  }
+  // if (peerVideo.srcObject) {
+  //   peerVideo.srcObject.getTracks().forEach(track => track.stop());
+  // }
 
   if (rtcPeerConnection) {
     rtcPeerConnection.ontrack = null;
@@ -445,10 +443,18 @@ function OnIceCandidateFunction(event) {
 }
 
 function OnTrackFunction(event) {
-  peerVideo.srcObject = event.streams[0];
-  peerVideo.onloadedmetadata = function (e) {
-    peerVideo.play();
-  };
+  const peer = setUpCamera(
+    scene,
+    event.streams[0],
+    `${Math.random()}`,
+    {x: 1 + Math.random()*2, y:2 + Math.random()*2, z:1}
+  )
+  peerVideos.push(peer)
+
+  // peerVideo.srcObject = event.streams[0];
+  // peerVideo.onloadedmetadata = function (e) {
+  //   peerVideo.play();
+  // };
 }
 
 function listCameras() {
