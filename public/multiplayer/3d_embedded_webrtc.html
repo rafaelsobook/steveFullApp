@@ -6,6 +6,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/1.7.3/socket.io.js"></script>
     <link href="./styles.css" rel="stylesheet" />
     <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
     <style>
         html, body {
             overflow: hidden;
@@ -75,18 +76,18 @@
 
     var createScene = function () {
 
-        engine.displayLoadingUI();
-        var stream1 = "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8";
+        // engine.displayLoadingUI();
+        // var stream1 = "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8";
 
-        // Create the video element
-        var video = document.createElement("video");
-        video.autoplay = true;
-        video.playsInline = true;
-        video.src = stream1;
+        // // Create the video element
+        // var video = document.createElement("video");
+        // video.autoplay = true;
+        // video.playsInline = true;
+        // video.src = stream1;
 
-        // Append the video element to the body
-        document.body.appendChild(video);
-        console.log("Adding HTML video element");
+        // // Append the video element to the body
+        // document.body.appendChild(video);
+        // console.log("Adding HTML video element");
         // Create the scene space
         var scene = new BABYLON.Scene(engine);
 
@@ -98,71 +99,71 @@
         // Add lights to the scene
         var light = new BABYLON.DirectionalLight("dir", new BABYLON.Vector3(0, -1.5, 0), scene);
 
-        // This is where you create and manipulate meshes
-        var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+        // // This is where you create and manipulate meshes
+        // var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+        // // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
         // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
-        TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
-        TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-        TV.actionManager = new BABYLON.ActionManager(scene);
+        // TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+        // TV.actionManager = new BABYLON.ActionManager(scene);
 
-        s.onload = function() {
-            // Video material
-            videoMat = new BABYLON.StandardMaterial("textVid", scene);
-            var video = document.querySelector('video');
-            var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+        // s.onload = function() {
+        //     // Video material
+        //     videoMat = new BABYLON.StandardMaterial("textVid", scene);
+        //     var video = document.querySelector('video');
+        //     var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
 
-            videoMat.backFaceCulling = false;
-            videoMat.diffuseTexture = videoTexture;
-            videoMat.emissiveColor = BABYLON.Color3.White();
-            TV.material = videoMat;
-            var htmlVideo = videoTexture.video;
+        //     videoMat.backFaceCulling = false;
+        //     videoMat.diffuseTexture = videoTexture;
+        //     videoMat.emissiveColor = BABYLON.Color3.White();
+        //     TV.material = videoMat;
+        //     var htmlVideo = videoTexture.video;
 
-            if (Hls.isSupported()) {
-                var hls = new Hls();
-                hls.loadSource(stream1);
-                hls.attachMedia(video);
-                engine.hideLoadingUI();
-                hls.on(Hls.Events.MANIFEST_PARSED,function() {
-                    TV.actionManager.registerAction(
-                        new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-                        function(event) {
-                            htmlVideo.play();
-                        })
-                    );
-                });
-            } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-                video.src = stream1;
-                engine.hideLoadingUI();
-                video.addEventListener('loadedmetadata',function() {
-                    TV.actionManager.registerAction(
-                        new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-                        function(event) {
-                            htmlVideo.play();
-                        })
-                    );
-                });
-            }
-        }
+        //     if (Hls.isSupported()) {
+        //         var hls = new Hls();
+        //         hls.loadSource(stream1);
+        //         hls.attachMedia(video);
+        //         engine.hideLoadingUI();
+        //         hls.on(Hls.Events.MANIFEST_PARSED,function() {
+        //             TV.actionManager.registerAction(
+        //                 new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+        //                 function(event) {
+        //                     htmlVideo.play();
+        //                 })
+        //             );
+        //         });
+        //     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+        //         video.src = stream1;
+        //         engine.hideLoadingUI();
+        //         video.addEventListener('loadedmetadata',function() {
+        //             TV.actionManager.registerAction(
+        //                 new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+        //                 function(event) {
+        //                     htmlVideo.play();
+        //                 })
+        //             );
+        //         });
+        //     }
+        // }
         return scene;
     };
-            window.initFunction = async function() {
+        window.initFunction = async function() {
 
 
 
-                var asyncEngineCreation = async function() {
-                    try {
-                    return createDefaultEngine();
-                    } catch(e) {
-                    console.log("the available createEngine function failed. Creating the default engine instead");
-                    return createDefaultEngine();
+                    var asyncEngineCreation = async function() {
+                        try {
+                        return createDefaultEngine();
+                        } catch(e) {
+                        console.log("the available createEngine function failed. Creating the default engine instead");
+                        return createDefaultEngine();
+                        }
                     }
-                }
 
-                window.engine = await asyncEngineCreation();
-    if (!engine) throw 'engine should not be null.';
-    startRenderLoop(engine, canvas);
-    window.scene = createScene();};
-    initFunction().then(() => {sceneToRender = scene
+                    window.engine = await asyncEngineCreation();
+        if (!engine) throw 'engine should not be null.';
+        startRenderLoop(engine, canvas);
+        window.scene = createScene();};
+        initFunction().then(() => {sceneToRender = scene
     });
 
     // Resize

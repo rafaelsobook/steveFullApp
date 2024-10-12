@@ -33,13 +33,14 @@ joinCameraButton.addEventListener("click", () => joinRoom("camera"));
 joinScreenButton.addEventListener("click", () => joinRoom("screen"));
 joinAudioButton.addEventListener("click", () => joinRoom("audio"));
 
-function joinRoom(type) {
+function joinRoom(type) {  
   if (roomInput.value == "") {
     alert("Please enter a room name");
   } else {
     roomName = roomInput.value;
     mediaType = type;
     socket.emit("join", roomName);
+    console.log("Join Room")
   }
 }
 
@@ -214,16 +215,144 @@ function getAndSetUserMedia() {
     .catch(handleMediaError);
 }
 
+function setUpHls(scene, url, _id, pos){
+  console.log(scene)
+  const engine = scene.getEngine()
+  // Create the video element
+  var video = document.createElement("video");
+  video.autoplay = false;
+  video.playsInline = true;
+  video.src = url;
+  video.id = _id
+
+  // Append the video element to the body
+  document.body.appendChild(video);
+  console.log("Adding HTML video element");
+
+  // This is where you create and manipulate meshes
+  var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+  // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+  TV.position = new BABYLON.Vector3(pos.x,pos.y, pos.z)
+  TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+  TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+  TV.actionManager = new BABYLON.ActionManager(scene);
+
+
+  // Video material
+  const videoMat = new BABYLON.StandardMaterial("textVid", scene);
+  var video = document.querySelector('video');
+  var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+
+  videoMat.backFaceCulling = false;
+  videoMat.diffuseTexture = videoTexture;
+  videoMat.emissiveColor = BABYLON.Color3.White();
+  TV.material = videoMat;
+  var htmlVideo = videoTexture.video;
+
+  if (Hls.isSupported()) {
+      var hls = new Hls();
+      hls.loadSource(url);
+      hls.attachMedia(video);
+      engine.hideLoadingUI();
+      hls.on(Hls.Events.MANIFEST_PARSED,function() {
+          TV.actionManager.registerAction(
+              new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+              function(event) {
+                  htmlVideo.play();
+              })
+          );
+      });
+  } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      video.src = url;
+      engine.hideLoadingUI();
+      video.addEventListener('loadedmetadata',function() {
+          TV.actionManager.registerAction(
+              new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+              function(event) {
+                  htmlVideo.play();
+              })
+          );
+      });
+  }
+  
+}
+
+function setUpCamera(scene, stream, _id, pos){
+  console.log(scene)
+  const engine = scene.getEngine()
+  // Create the video element
+  var video = document.createElement("video");
+  video.autoplay = false;
+  video.playsInline = true;
+
+  video.id = _id
+  video.srcObject = stream;
+  // video.onloadedmetadata = function (e) {
+  //   video.play();
+  // };
+
+  // Append the video element to the body
+  document.body.appendChild(video);
+  console.log("Adding HTML video element");
+
+  // This is where you create and manipulate meshes
+  var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+  // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+  TV.position = new BABYLON.Vector3(pos.x,pos.y, pos.z)
+  TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+  TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+  TV.actionManager = new BABYLON.ActionManager(scene);
+
+
+  // Video material
+  const videoMat = new BABYLON.StandardMaterial("textVid", scene);
+  // var video = document.querySelector('video');
+  var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+
+  videoMat.backFaceCulling = false;
+  videoMat.diffuseTexture = videoTexture;
+  videoMat.emissiveColor = BABYLON.Color3.White();
+  TV.material = videoMat;
+  var htmlVideo = videoTexture.video;
+
+  // video.srcObject = stream;
+  engine.hideLoadingUI();
+  video.addEventListener('loadedmetadata',function() {
+      TV.actionManager.registerAction(
+          new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+          function(event) {
+              htmlVideo.play();
+          })
+      );
+  });
+  
+}
 function setUpStream(stream) {
+
   userStream = stream;
   divVideoChatLobby.style.display = "none";
   divVideoChat.style.display = "block";
   divButtonGroup.style.display = "flex";
 
-  userVideo.srcObject = stream;
-  userVideo.onloadedmetadata = function (e) {
-    userVideo.play();
-  };
+    // setUpHls(
+  //   scene, 
+  //   "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8", 
+  //   "12asdf4",
+  //   {x:4,y:1,z:4}  
+  // )
+
+  setUpCamera(
+    scene, 
+    stream, 
+    "234dfsca23",
+    {x:4,y:1,z:4}  
+  )
+  
+
+  // userVideo.srcObject = stream;
+  // userVideo.onloadedmetadata = function (e) {
+  //   userVideo.play();
+  // };
 
   if (mediaType === "audio") {
     audioOnlyLabel.style.display = "block";
@@ -232,7 +361,11 @@ function setUpStream(stream) {
   }
 
   socket.emit("ready", roomName);
+
+
 }
+
+
 
 function handleMediaError(err) {
   console.error(err);
