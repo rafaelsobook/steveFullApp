@@ -20,6 +20,7 @@ function _makeThumbArea(name, thickness, color, background) {
 }
 export function initJoyStick(socket, cam, scene, isSocketAvail) {
 
+    const refbx = scene.getMeshByName('refbx')
     let xAddPos = 0;
     let yAddPos = 0;
     let myChar
@@ -69,9 +70,12 @@ export function initJoyStick(socket, cam, scene, isSocketAvail) {
         leftPuck.alpha = 1
 
         camDir = cam.getForwardRay().direction
+        // refbx.lookAt(camDir,0,0,0)
     });
     leftThumbContainer.onPointerMoveObservable.add(function (coordinates) {
         if (!getCanPress()) return
+        myChar = getCharacter()
+        if (!myChar) return log("character not found")
         if (leftPuck.isDown) {
             xAddPos = coordinates.x - (leftThumbContainer._currentMeasure.width * .5) - sideJoystickOffset;
             yAddPos = adt._canvas.height - coordinates.y - (leftThumbContainer._currentMeasure.height * .5) + bottomJoystickOffset;
@@ -90,13 +94,16 @@ export function initJoyStick(socket, cam, scene, isSocketAvail) {
 
             if(yAddPos > 0) yAddPos = yAddPos / 60
             if(yAddPos < 0) yAddPos = yAddPos / 60
-            log(`x: ${xAddPos}, y: ${yAddPos}`)
             
+            // refbx.lookAt(new BABYLON.Vector3(xAddPos, refbx.position.y,yAddPos),0,0,0)
+            // const _quat = refbx.rotationQuaternion
+
             emitMove({
                 _id: myChar._id,
                 movement: { moveX: xAddPos, moveZ: yAddPos },
                 direction: tPos,
-                controllerType: 'key'
+                controllerType: 'mobile-joystick',
+                // quat: {x:_quat.x, y:_quat.y, z: _quat.z, w: _quat.w}
             })
         }
     })

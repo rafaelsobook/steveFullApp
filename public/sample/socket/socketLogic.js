@@ -3,6 +3,7 @@ import { getInitialPlayer } from "../dropdown.js"
 import { getState, main, setState } from "../index.js"
 import { blendAnimv2, checkPlayers, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
+
 const { MeshBuilder, Vector3, Space, Quaternion } = BABYLON
 const log = console.log
 const listElement = document.querySelector(".room-lists")
@@ -62,16 +63,18 @@ export function initializeSocket() {
   })
   socket.on('scene-updated', sceneDescriptionList => {
     const scene = getScene()
-    if(!scene) return log("scene not ready")    
+    if(!scene) return log("scene not ready")
+
     sceneDescriptionList.forEach( desc => {
 
       if(desc.type === "hlsurl"){
         const engine = scene.getEngine()
         // Create the video element
         var video = document.createElement("video");
-        video.autoplay = true;
+        video.autoplay = false;
         video.playsInline = true;
         video.src = desc.url;
+        video.id = desc._id
 
         // Append the video element to the body
         document.body.appendChild(video);
@@ -167,7 +170,7 @@ export function initializeSocket() {
         // player.leftHandControl.isVisible = true
         // player.rightHandControl.isVisible = true
         if(player._id !== getMyDetail()._id){
-          const { wristPos , wristQuat, headDirection} = data
+          const { wristPos , wristQuat, headDirection, fingerCoord} = data
           // log(wristPos, wristQuat)
 
           if(!wristPos || !wristQuat){
@@ -196,10 +199,27 @@ export function initializeSocket() {
           player.rHand.rotationQuaternion.z = wristQuat.right.z
           player.rHand.rotationQuaternion.w = wristQuat.right.w
 
+          
+          
+
           if(headDirection) {
             log(headDirection)
             player.headDirection = headDirection
             // player.neckNode.lookAt(new Vector3(headDirection.x, headDirection.y, headDirection.z), Math.PI,Math.PI - Math.PI/8,0, Space.WORLD)
+          }
+          // finger joint movements
+          if(fingerCoord && fingerCoord.length){
+            fingerCoord.forEach(fingerData => {
+              let bone
+              if(fingerData.name.includes("left")){
+                bone = player.lHandBones.find(bone => bone.name === fingerData.name)
+              }else{
+                bone = player.rHandBones.find(bone => bone.name === fingerData.name)
+              }
+              if(!bone) return 
+              const boneNode = bone.getTransformNode()
+              boneNode.setAbsolutePosition(new Vector3(fingerData.x,fingerData.y,fingerData.z))
+            })
           }
           
         }
@@ -213,7 +233,7 @@ export function initializeSocket() {
       const playersInScene = getPlayersInScene()
       const playerThatMoved = playersInScene.find(pl => pl._id === data._id)
       if (playerThatMoved) {
-        const { dir, movement, wristPos } = data
+        const { dir, movement, wristPos, quat, controller } = data
         if(movement.moveX == 0 && movement.moveZ===0) return
         const loc = playerThatMoved.mainBody.position
         const plMove = playerThatMoved.movement
@@ -225,7 +245,8 @@ export function initializeSocket() {
         playerThatMoved.dir = dir
         playerThatMoved.movement = movement
         playerThatMoved._moving = true
-
+        playerThatMoved.rootQuat = quat
+        playerThatMoved.controller = controller
         if(playerThatMoved._id !== getMyDetail()._id){
           // playerThatMoved.leftHandControl.position.x = wristPos.left.x
           // playerThatMoved.leftHandControl.position.y = wristPos.left.y
@@ -241,7 +262,7 @@ export function initializeSocket() {
     })
   })
   socket.on("player-stopped", data => {
-    log(data)
+ 
     const playersInScene = getPlayersInScene()
     const plThatStopped = playersInScene.find(pl => pl._id === data._id)
     if (plThatStopped) {
@@ -251,7 +272,7 @@ export function initializeSocket() {
       plThatStopped.dir = data.dir
       plThatStopped.movement = data.movement
       plThatStopped._moving = false
-      log(data)
+
       if (!data.movement.moveX && !data.movement.moveZ) plThatStopped._moving = false
     }
   })
@@ -289,6 +310,34 @@ export function initializeSocket() {
 
   socket.on('player-dispose', playerDetail => {
     playerDispose(playerDetail)
+  })
+
+  // WEBRTC CONNECECTION
+  socket.on("offer", offer => {
+    let rtcPeerConnection= new RTCPeerConnection(iceServers)
+
+    rtcPeerConnection.onicecandidate = function OnIceCandidateFunction(event){
+      if(event.candidate){
+        socket.emit('candidate', event.candidate, myDetail.roomNum)
+      }
+    }
+    rtcPeerConnection.ontrack = function OnTrackFunction(event){
+      const video = getVideo()
+      video.srcObject = event.streams[0];
+      video.onloadedmetadata= e => {
+        video.play()
+      }
+    }
+    rtcPeerConnection.setRemoteDescription(offer)
+    rtcPeerConnection.createAnswer(
+      function(answer){
+        rtcPeerConnection.setLocalDescription(answer)
+        socket.emit("answer", answer, myDetail.roomNum)
+      },
+      function(error){
+        log(error)
+      }
+    )
   })
 }
 

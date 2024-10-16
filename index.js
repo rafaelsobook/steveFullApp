@@ -41,13 +41,20 @@ rooms.set(1, {
     limit: 4,
     players: [],
     sceneDescription: [
+        // {
+        //     _id: "sad12342",
+        //     type: "hlsurl",
+        //     url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
+        //     pos: {x:1,y:1,z:2},
+        //     dir: {x:0,y:0,z:0},
+        // },
         {
-            _id: "sad12342",
+            _id: "12asdf4",
             type: "hlsurl",
             url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
-            pos: {x:1,y:1,z:2},
+            pos: {x:4,y:1,z:4},
             dir: {x:0,y:0,z:0},
-        },
+        }
         // {
         //     _id: "1235214",
         //     type: "remoteurl",
@@ -79,7 +86,6 @@ rooms.set(2, {
 
 // app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
 app.use(express.static("public"))
 const router = express.Router();
 
@@ -123,6 +129,7 @@ io.on("connection", socket => {
                 y: 0,
                 z: 0 // facing forward
             },
+            quat: undefined,
             wristPos: false,
             wristQuat: false,
             headDirection: false,
@@ -134,7 +141,7 @@ io.on("connection", socket => {
             _moving: false,
             avatarUrl,
             roomNum: roomNum,
-            controllerType: undefined, //key//joystick//vr//teleport
+            controller: undefined, //key//joystick//vr//teleport
             currentSpd: 1.3,
         }
         socket.join(roomNum)
@@ -162,10 +169,11 @@ io.on("connection", socket => {
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {
-                log(data.movement)
+               
                 playerToMove.dir = data.direction
                 playerToMove.movement = data.movement
-
+                playerToMove.quat = data.quat
+                playerToMove.controller = data.controllerType
                 // playerToMove.wristPos = wristPos
 
                 io.to(key).emit("a-player-moved", value.players)
@@ -215,7 +223,7 @@ io.on("connection", socket => {
 
     // vr
     socket.on("moving-hands", data => {
-        const { wristPos, wristQuat, headDirection, camQuat } = data
+        const { wristPos, wristQuat, headDirection, camQuat, fingerCoord } = data
         log(camQuat)
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
@@ -223,11 +231,12 @@ io.on("connection", socket => {
                 playerToMove.wristPos = wristPos
                 playerToMove.wristQuat = wristQuat
                 playerToMove.headDirection = headDirection
+                playerToMove.fingerCoord = fingerCoord
                 io.to(key).emit("player-moved-hands", value.players)
             }
         }
     })
-
+    
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
             const disconnectedPlayer = value.players.find(pl => pl.socketId === socket.id)
@@ -262,7 +271,7 @@ io.on("connection", socket => {
         } else {
           //when there are already two people inside the room.
           socket.emit("full");
-        }
+        }        
         console.log(rooms);
     });
 

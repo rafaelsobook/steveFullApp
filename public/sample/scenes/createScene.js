@@ -1,8 +1,10 @@
-const { SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
+const {Quaternion,Color3, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
 import { createMesh, createPlayer, importCustomModel, importModelContainer } from '../creations.js'
+import { bylonUIInit } from '../guitool/guitool.js'
+import { createOptScreen } from '../guitool/vrui.js'
 import { getCharacter, getState, setState } from '../index.js'
 import { emitMove, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
@@ -37,13 +39,17 @@ export async function createScene(_engine) {
     cam.attachControl(document.querySelector('canvas'), true)
     cam.wheelDeltaPercentage = 0.01;
     cam.minZ = 0.01
+    cam.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
     // scene.createDefaultEnvironment()
     const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
 
     const plugin = new HavokPlugin(true, await HavokPhysics());
     scene.enablePhysics(new Vector3(0, -9.8, 0), plugin);
 
+    bylonUIInit()
+    // createOptScreen(scene, false, {x:-1, y: 2,z:-2})
     const ground = createGround(scene)
+    createRefbx(scene)
     // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
     // skybox.infiniteDistance = true;
 
@@ -65,7 +71,7 @@ export async function createScene(_engine) {
     // await importAnimations("jump_anim.glb")
     await importAnimations("jump_new.glb")
     await importAnimations("walkback_anim.glb")
-
+    createHandMat(scene, true)
     const rHand = await importModelContainer(scene, './models/rightHand.glb')
     const lHand = await importModelContainer(scene, './models/leftHand.glb')
     vrHands = {
@@ -83,14 +89,15 @@ export async function createScene(_engine) {
         },
         disableTeleportation: true
     })
-
-    const featureManager = xrHelper.baseExperience.featuresManager;
+    xrHelper.pointerSelection.detach()
+    // const featureManager = xrHelper.baseExperience.featuresManager;
 
     // featureManager.enableFeature(BABYLON.WebXRFeatureName.MOVEMENT, "latest", {
     //     xrInput: xrHelper.input,
     //     movementOrientationFollowsViewerPose: true,
     //     // orientationPreferredHandedness: "left"
     // })
+  
     await scene.whenReadyAsync()
 
     setState("GAME")
@@ -98,7 +105,7 @@ export async function createScene(_engine) {
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)
-    initVrStickControls(scene, xrHelper)
+    await initVrStickControls(scene, xrHelper)
 
     const decimalMaterial = new StandardMaterial('decimal', scene)
     decimalMaterial.diffuseTexture = new Texture('./images/dragon.png', scene)
@@ -151,10 +158,28 @@ export async function createScene(_engine) {
             if (pl._moving) {
                 // pl.anims[1].play()
                 
-                pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),0,0,0,BABYLON.Space.Local)
-                pl.root.addRotation(0,Math.PI,0)
-                pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
-                pl.mainBody.locallyTranslate(new Vector3(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ))
+                // pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),0,0,0,BABYLON.Space.Local)
+                // pl.root.addRotation(0,Math.PI,0)
+                // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
+               
+                switch(pl.controller){
+                    case "key":
+                        if(pl.rootQuat){
+                            const q = pl.rootQuat
+                            const quat = new Quaternion(q.x,q.y,q.z,q.w)
+                            // Quaternion.SlerpToRef(pl.root.rotationQuaternion, new Quaternion(0,1,0,0), 0.1, pl.root.rotationQuaternion)
+                            Quaternion.SlerpToRef(pl.mainBody.rotationQuaternion, quat, 0.1, pl.mainBody.rotationQuaternion)
+                        }
+                        pl.mainBody.locallyTranslate(new Vector3(0, 0, pl.currentSpd * deltaT * 1))
+                    break
+                    case "mobile-joystick":
+                        pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),Math.PI,0,0,BABYLON.Space.Local)
+                        
+                        pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
+                        pl.mainBody.locallyTranslate(new Vector3(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ))
+                    break
+                }
+                
                 // pl.mainBody.physicsBody.setLinearVelocity(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ)
                 // pl.root.position.x = pl.mainBody.position.x
                 // pl.root.position.z = pl.mainBody.position.z
@@ -304,7 +329,7 @@ export function playerDispose(playerDetail) {
 
 // environment creations 
 function createGround(scene){
-    const ground = MeshBuilder.CreateGround("asd", { width: 100, height: 100 }, scene)
+    const ground = MeshBuilder.CreateGround("ground", { width: 100, height: 100 }, scene)
     new PhysicsAggregate(ground, PhysicsShapeType.BOX, { mass: 0}, scene)
 
     const mat = new StandardMaterial("mat", scene)
@@ -313,7 +338,26 @@ function createGround(scene){
     tex.vScale = 12
     mat.diffuseTexture = tex
     mat.specularColor = new BABYLON.Color3(0,0,0)
+    mat.backFaceCulling = true
     ground.material =mat
 
     return ground
+}
+function createRefbx(scene){
+    const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
+    const head = MeshBuilder.CreateBox("refbx", {size: .66}, scene)
+    head.parent = refbx
+    head.position = new Vector3(0,.9,.3)
+    refbx.isVisible = false
+    head.isVisible = false
+    refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
+}
+
+function createHandMat(scene, isLight){
+    var handMat = new StandardMaterial("handMat", scene);
+    handMat.diffuseColor = new Color3(0.8, 0.6, 0.5);  // Skin tone colo
+    if(isLight) handMat.emissiveColor = new Color3(1.0, 0.8, 0.6);  // Emissive glow color
+    handMat.specularColor = new Color3(0,0,0)
+    handMat.backFaceCulling = true
+    return handMat
 }

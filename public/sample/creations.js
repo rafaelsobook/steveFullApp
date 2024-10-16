@@ -1,7 +1,7 @@
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
-const {Quaternion,Matrix, Space, Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
+const {Quaternion,Matrix,Mesh, Space, Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
 const log = console.log
 
 
@@ -21,15 +21,17 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     
     const ikCtrls = []
     // const instance = RootAvatar.instantiateModelsToScene()
+    const handMat = scene.getMaterialByName("handMat")
     const rightInstance = vrHands.right.instantiateModelsToScene()
     const leftInstance = vrHands.left.instantiateModelsToScene()
     const rHand = rightInstance.rootNodes[0]
     const lHand = leftInstance.rootNodes[0]
-    const rHandMesh = rHand.getChildren()[1]
-    const lhandMesh = lHand.getChildren()[1]
+    const rHandMesh = rHand.getChildren()[1]; rHandMesh.material=handMat
+    const lHandMesh = lHand.getChildren()[1]; lHandMesh.material=handMat
     const rHandBones = rightInstance.skeletons[0].bones
-    rHandMesh.isVisible = false
-    lhandMesh.isVisible = false
+    const lHandBones = leftInstance.skeletons[0].bones
+    // rHandMesh.isVisible = true
+    // lHandMesh.isVisible = true
     // setInterval(() => {
     //     rHand.position.x += .5
     //     const thumbTip = rHandBones.find(bne => bne.name === "right-handJoint-0")
@@ -106,10 +108,10 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
     mainBody.isVisible = false
     mainBody.visibility = .6
-
+    mainBody.rotationQuaternion = Quaternion.FromEulerVector(mainBody.rotation)
     root.parent = mainBody
     root.position = new Vector3(0,-1,0)
-    root.rotationQuaternion = null
+    // root.rotationQuaternion = null
     if (getMyDetail()._id === _id) {
         scene.activeCamera.setTarget(mainBody)
         scene.activeCamera.alpha = -Math.PI / 2
@@ -228,7 +230,9 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         rHand,
         lHand,
         rHandMesh,
-        lhandMesh,
+        lHandMesh,
+        rHandBones,
+        lHandBones,
         neckNode
     }
 }
@@ -286,3 +290,50 @@ export function createGizmo(scene, _meshToAttached, isRotationGizmo){
     gizmoManager.positionGizmoEnabled= isRotationGizmo ? false : true
     gizmoManager.rotationGizmoEnabled = isRotationGizmo
 }
+
+
+
+// export function createTextButton(buttonLabel, parentMesh, scene, toCollide){
+//     const {Mesh, GUI} = BABYLON
+//     const btnMesh = Mesh.CreatePlane("btnPlane", 1, scene);
+//     btnMesh.isPickable = false
+
+//     btnMesh.billboardMode = Mesh.BILLBOARDMODE_ALL;
+//     const textureForName = GUI.AdvancedDynamicTexture.CreateForMesh(btnMesh);
+
+//     const text1 = new GUI.TextBlock();
+//     text1.text = buttonLabel
+//     text1.color = "red"
+//     text1.background = "blue"
+//     text1.fontSize = 90;
+
+//     textureForName.addControl(text1);    
+//     if(parentMesh) btnMesh.parent = parentMesh
+//     // btnMesh.position.x =pos.x
+//     // btnMesh.position.y =pos.y
+//     // btnMesh.position.z =pos.z
+
+//     if(toCollide){
+//         btnMesh.actionManager = new BABYLON.ActionManager(scene)
+//         btnMesh.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+//             {
+//                 trigger: BABYLON.ActionManager.OnIntersectionEnterTrigger,
+//                 parameter: toCollide
+//             }, e => {
+//                 console.log("collided")
+//                 btn.background = "yellow";
+//             }
+//         ))
+//         btnMesh.actionManager.registerAction(new BABYLON.ExecuteCodeAction(
+//             {
+//                 trigger: BABYLON.ActionManager.OnIntersectionExitTrigger,
+//                 parameter: toCollide
+//             }, e => {
+//                 console.log("OnIntersectionExitTrigger")
+//                 btn.background = "red";
+//             }
+//         ))
+//     }
+ 
+//     return btnMesh
+// }
