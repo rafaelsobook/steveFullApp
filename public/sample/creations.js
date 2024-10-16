@@ -1,3 +1,4 @@
+import { setGizmo } from "./guitool/gizmos.js";
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
@@ -285,11 +286,13 @@ export function createGizmo(scene, _meshToAttached, isRotationGizmo){
     const gizmoManager = new GizmoManager(scene,2);
     gizmoManager.usePointerToAttachGizmos = false;
     gizmoManager.positionGizmoEnabled = true;
-    if(_meshToAttached) gizmoManager.attachToMesh(_meshToAttached);
+    if(_meshToAttached) gizmoManager.attachableMeshes = [_meshToAttached];
     // if(_meshToAttached) gizmoManager.attachToNode(_meshToAttached)
     gizmoManager.positionGizmoEnabled= isRotationGizmo ? false : true
     gizmoManager.rotationGizmoEnabled = isRotationGizmo
+    setGizmo(gizmoManager)
 }
+
 
 
 

@@ -28,7 +28,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     log('Key or certificate file not found, setting httpsOptions to an empty object.')
 }
 
-let isHttps = false
+let isHttps = true
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)

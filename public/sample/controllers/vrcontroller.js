@@ -189,16 +189,14 @@ export async function initVrStickControls(scene, xr){
         log(toRotateBones)
         let interval = setInterval(() => {
             log("searching for both hands")
-            if(r_wrist || l_wrist) { clearInterval(interval)   
-                
-                
+            if(r_wrist || l_wrist) { clearInterval(interval)
                 tipBx = MeshBuilder.CreateSphere("asd", { diameter: .2/10, segments: 4}, scene);tipBx.isVisible =false
                 const screen = createOptScreen(scene, false)
                 const r_wrist_btn = createButtonForHand("Menu", r_wrist, scene, tipBx, () => {
                     screen.isVisible = !screen.isVisible
                     screen.position = cam.getFrontPosition(1.1)
                     screen.lookAt(cam.getFrontPosition(.1),0,0,0)
-                    log(screen)
+                    screen.isVisible ? xr.pointerSelection.attach() : xr.pointerSelection.detach()
                 })
 
                 r_wrist_btn.position = new Vector3(0,-2,0)

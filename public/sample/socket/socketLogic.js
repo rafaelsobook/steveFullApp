@@ -1,5 +1,6 @@
 import { importCustomModel } from "../creations.js"
 import { getInitialPlayer } from "../dropdown.js"
+import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
 import { blendAnimv2, checkPlayers, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
@@ -75,11 +76,9 @@ export function initializeSocket() {
         video.playsInline = true;
         video.src = desc.url;
         video.id = desc._id
-
-        // Append the video element to the body
-        document.body.appendChild(video);
+        
         console.log("Adding HTML video element");
-
+        document.body.appendChild(video);
         // This is where you create and manipulate meshes
         var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
         // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
@@ -87,11 +86,15 @@ export function initializeSocket() {
         TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
         TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
         TV.actionManager = new BABYLON.ActionManager(scene);
-
-   
+        if(getGizmo()) {
+          attachToGizmoArray(TV); 
+          changeGizmo(false,false, true)
+        }
+    
         // Video material
         const videoMat = new BABYLON.StandardMaterial("textVid", scene);
-        var video = document.querySelector('video');
+        var video = document.querySelector('video');video.style.width = "100px"
+        video.preload ="none"
         var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
 
         videoMat.backFaceCulling = false;
@@ -110,6 +113,7 @@ export function initializeSocket() {
                     new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
                     function(event) {
                         htmlVideo.play();
+                        changeGizmo(false, false, true)
                     })
                 );
             });
@@ -121,11 +125,11 @@ export function initializeSocket() {
                     new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
                     function(event) {
                         htmlVideo.play();
+                        changeGizmo(false, false, true)
                     })
                 );
             });
         }
-        
       }
     
       if(desc.type === "primitive"){
@@ -375,4 +379,23 @@ export function getAllPlayersInSocket() {
 }
 export function getAllImportedModelsInSocket(){
 
+}
+
+
+function fetchVideoAndPlay(videoElement, videoUrl, cb) {
+  fetch(videoUrl)
+  .then(response => response.blob())
+  .then(blob => {
+    videoElement.src = blob;
+    // return videoElement.play();
+
+    if(cb) cb()
+  })
+  .then(_ => {
+    // Video playback started ;)
+  })
+  .catch(e => {
+    // Video playback failed ;(
+      log(e)
+  })
 }
