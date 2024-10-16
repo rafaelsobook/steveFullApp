@@ -42,7 +42,21 @@ export function initializeSocket() {
     for (var i = 0; i < roomLength; i++) {
       const button = document.createElement("button")
       button.className = `room-btn ${i + 1}`
-      button.innerHTML = `room ${i + 1}`
+      switch (i + 1) {
+        case 1:
+            button.innerHTML = "Main"
+            break;
+        case 2:
+            button.innerHTML = "Virtual World Museum (Test)"
+            break;
+        case 3:
+            button.innerHTML = "Jordan's Memories"
+            break;
+        default:
+            button.innerHTML = `room ${i + 1}`
+            break;
+      }
+
       listElement.append(button)
     }
   })
@@ -72,7 +86,7 @@ export function initializeSocket() {
         const engine = scene.getEngine()
         // Create the video element
         var video = document.createElement("video");
-        video.autoplay = false;
+        video.autoplay = true;
         video.playsInline = true;
         video.src = desc.url;
         video.id = desc._id
@@ -93,7 +107,8 @@ export function initializeSocket() {
     
         // Video material
         const videoMat = new BABYLON.StandardMaterial("textVid", scene);
-        var video = document.querySelector('video');video.style.width = "100px"
+        var video = document.querySelector('video');
+        video.style.width = "100px"
         video.preload ="none"
         var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
 
@@ -203,9 +218,6 @@ export function initializeSocket() {
           player.rHand.rotationQuaternion.z = wristQuat.right.z
           player.rHand.rotationQuaternion.w = wristQuat.right.w
 
-          
-          
-
           if(headDirection) {
             log(headDirection)
             player.headDirection = headDirection
@@ -314,34 +326,6 @@ export function initializeSocket() {
 
   socket.on('player-dispose', playerDetail => {
     playerDispose(playerDetail)
-  })
-
-  // WEBRTC CONNECECTION
-  socket.on("offer", offer => {
-    let rtcPeerConnection= new RTCPeerConnection(iceServers)
-
-    rtcPeerConnection.onicecandidate = function OnIceCandidateFunction(event){
-      if(event.candidate){
-        socket.emit('candidate', event.candidate, myDetail.roomNum)
-      }
-    }
-    rtcPeerConnection.ontrack = function OnTrackFunction(event){
-      const video = getVideo()
-      video.srcObject = event.streams[0];
-      video.onloadedmetadata= e => {
-        video.play()
-      }
-    }
-    rtcPeerConnection.setRemoteDescription(offer)
-    rtcPeerConnection.createAnswer(
-      function(answer){
-        rtcPeerConnection.setLocalDescription(answer)
-        socket.emit("answer", answer, myDetail.roomNum)
-      },
-      function(error){
-        log(error)
-      }
-    )
   })
 }
 

@@ -23,43 +23,28 @@ export function initKeyControls(scene) {
         camDir.y = refbx.position.y
         switch (keypressed) {
             case "w":
-                movement.moveZ = 1
-                willMove = true
-                refbx.lookAt(camDir,0,0,0)
-                break
-            case "a":
-                movement.moveX = -1
-                willMove = true
-                
-                break
-            case "d":
-                movement.moveX = 1
-                willMove = true
-                break
-            case "s":
-                movement.moveZ = -1
-                willMove = true
-            break
-
             case "arrowup":
                 movement.moveZ = 1
                 willMove = true
                 break
+            case "a":
             case "arrowleft":
                 movement.moveX = -1
                 willMove = true
                 break
+            case "d":
             case "arrowright":
                 movement.moveX = 1
                 willMove = true
                 break
+            case "s":
             case "arrowdown":
                 movement.moveZ = -1
                 willMove = true
-            break
+                break
         }
         if(!willMove) return
-        
+
         cPos = myCharacterInScene.mainBody.position
         tPos = { x: cPos.x + camDir.x, y: cPos.y, z: cPos.z + camDir.z }
         
@@ -94,33 +79,21 @@ export function initKeyControls(scene) {
         let willStop = false
         switch (keypressed) {
             case "w":
-                movement.moveZ = 0
-                willStop = true
-                break
-            case "a":
-                movement.moveX = 0
-                willStop = true
-                break
-            case "d":
-                movement.moveX = 0
-                willStop = true
-                break
-            case "s":
-                movement.moveZ = 0
-                willStop = true
-                break
             case "arrowup":
                 movement.moveZ = 0
                 willStop = true
                 break
+            case "a":
             case "arrowleft":
                 movement.moveX = 0
                 willStop = true
                 break
+            case "d":
             case "arrowright":
                 movement.moveX = 0
                 willStop = true
                 break
+            case "s":
             case "arrowdown":
                 movement.moveZ = 0
                 willStop = true

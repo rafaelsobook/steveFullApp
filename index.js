@@ -41,13 +41,6 @@ rooms.set(1, {
     limit: 4,
     players: [],
     sceneDescription: [
-        // {
-        //     _id: "sad12342",
-        //     type: "hlsurl",
-        //     url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
-        //     pos: {x:1,y:1,z:2},
-        //     dir: {x:0,y:0,z:0},
-        // },
         {
             _id: "12asdf4",
             type: "hlsurl",
@@ -55,6 +48,13 @@ rooms.set(1, {
             pos: {x:4,y:1,z:4},
             dir: {x:0,y:0,z:0},
         }
+//        {
+//            _id: "128383",
+//            type: "remoteurl",
+//            url: "./models/chair.glb",
+//            pos: {x:2,y:1,z:4},
+//            dir: {x:0,y:0,z:0},
+//        },
         // {
         //     _id: "1235214",
         //     type: "remoteurl",
@@ -81,12 +81,31 @@ rooms.set(1, {
 rooms.set(2, {
     limit: 4,
     players: [],
+    sceneDescription: [
+    {
+        _id: "1283820",
+        type: "remoteurl",
+        url: "./models/vwm.glb",
+        pos: {x:0,y:2,z:0},
+        dir: {x:0,y:0,z:0},
+    }]
+})
+rooms.set(3, {
+    limit: 4,
+    players: [],
     sceneDescription: []
 })
 
 // app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
 app.use(express.static("public"))
+//app.use('/multiplayer/node_modules', express.static(path.join(__dirname, 'node_modules')));
+//
+//app.get('/', (req, res) => {
+//  res.redirect('/google');
+//});
+
 const router = express.Router();
 
 
@@ -100,7 +119,7 @@ let io = new Server(server, {
 })
 
 io.on("connection", socket => {
-    
+
     _socket = socket
     socket.emit("room-size", rooms.size)
 
@@ -134,8 +153,8 @@ io.on("connection", socket => {
             wristQuat: false,
             headDirection: false,
             // {
-            //     left: { x: 0, y:0, z: 0, w: 1 }, 
-            //     right: { x: 0, y:0, z: 0, w: 1 } 
+            //     left: { x: 0, y:0, z: 0, w: 1 },
+            //     right: { x: 0, y:0, z: 0, w: 1 }
             // },
             _actionName: undefined,
             _moving: false,
@@ -149,7 +168,7 @@ io.on("connection", socket => {
 
         io.to(roomNum).emit("player-joined", {
             newPlayer: data,
-            allPlayers: rooms.get(roomNum).players,            
+            allPlayers: rooms.get(roomNum).players,
         })
         socket.emit("who-am-i", playerDetail)
         setTimeout(() => {
@@ -169,7 +188,7 @@ io.on("connection", socket => {
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {
-               
+
                 playerToMove.dir = data.direction
                 playerToMove.movement = data.movement
                 playerToMove.quat = data.quat
@@ -236,7 +255,7 @@ io.on("connection", socket => {
             }
         }
     })
-    
+
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
             const disconnectedPlayer = value.players.find(pl => pl.socketId === socket.id)
@@ -271,7 +290,7 @@ io.on("connection", socket => {
         } else {
           //when there are already two people inside the room.
           socket.emit("full");
-        }        
+        }
         console.log(rooms);
     });
 

@@ -15,7 +15,23 @@ let availableAvatars = [
     {
         avatarName: "steve purple",
         avatarUrl: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb"
+    },
+    {
+        avatarName: "Belle",
+        avatarUrl: "https://models.readyplayer.me/661ddfc815d99b54c430940b.glb"
+    },
+    {
+        avatarName: "Jordan",
+        avatarUrl: "https://models.readyplayer.me/66f473f48789cc73f5a0a972.glb"
     }
+//    {
+//        avatarName: "Kyle",
+//        avatarUrl: "./models/kyle.glb"
+//    },
+//    {
+//        avatarName: "Sehu",
+//        avatarUrl: "./models/sehu.glb"
+//    }
 ]
 let selectedAvatar = undefined
 
@@ -51,7 +67,7 @@ export function initDropDown(){
             avatarSelected(avatar)
         }
     };
-    avatarSelected(availableAvatars[2])
+    avatarSelected(availableAvatars[1])
 }
 
 function avatarSelected(avatarDet){

@@ -20,7 +20,7 @@ let interval
 let players = []
 
 // necessities to create player
-let scene
+// let scene
 let AvatarRoot
 let animationsGLB = []
 let vrHands = {
