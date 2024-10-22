@@ -12,7 +12,7 @@ export function displayTxt(cam, scene){
 
     // Create a simple text block
     text1 = new GUI.TextBlock();
-    text1.text = "asd ";
+    text1.text = "";
     text1.color = "white";
     text1.fontSize = 28;
     text1.top = "-40px"; // Adjust position if necessary
@@ -20,7 +20,7 @@ export function displayTxt(cam, scene){
     text1.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_TOP;
 
     text2 = new GUI.TextBlock();
-    text2.text = "asd ";
+    text2.text = "";
     text2.color = "white";
     text2.fontSize = 28;
     text2.top = "-40px"; // Adjust position if necessary

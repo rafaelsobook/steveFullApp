@@ -1,16 +1,16 @@
-const {Quaternion,Color3, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
+const {Quaternion,Color3, Space, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
-import { createMesh, createPlayer, importCustomModel, importModelContainer } from '../creations.js'
-import { bylonUIInit } from '../guitool/guitool.js'
-import { createOptScreen } from '../guitool/vrui.js'
+import { createMat, createMesh, createPlayer, importCustomModel, importModelContainer, parentAMesh } from '../creations.js'
+import { getSelectedImmMode } from '../dropdown.js'
+import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
+import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
+import { createMenuVTwo } from '../guitool/vrui.js'
 import { getCharacter, getState, setState } from '../index.js'
-import { emitMove, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
+import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
-const log = () => {
-    console.log
-}
+const log = console.log
 
 let currentAnimation
 let newAnimation
@@ -18,6 +18,7 @@ let interval
 
 
 let players = []
+let modelsInScene = []
 
 // necessities to create player
 // let scene
@@ -47,30 +48,37 @@ export async function createScene(_engine) {
     scene.enablePhysics(new Vector3(0, -9.8, 0), plugin);
 
     bylonUIInit()
+    // const menuScreen = createMenuVTwo(scene, false, {x:0, y:1.5, z:0})
+    // setInterval(() => {
+    //     const myChar = getCharacter()
+    //     if(!myChar) return
+    //     // menuScreen.node.addRotation(0,1,0) works
+    //     const screenPos = menuScreen.position.clone()
+    //     screenPos.y = myChar.mainBody.position.y
+    //     const result = screenPos.subtract(myChar.mainBody.position).normalize()
+    //     const angle = Math.atan2(result.x, result.z)
+    //     menuScreen.node.rotation.y = angle
+    // }, 1000)
     // createOptScreen(scene, false, {x:-1, y: 2,z:-2})
+
+    // const manager = create3DGuiManager(scene)
+    // const { checkBx, header } = createCheckBox("isVertical ? ", false, false, false, "40px", "40px", "blue")
+    // const samplebtn = createThreeDBtn(manager, "Different", 40, .2, "./images/sword.png")    
+    // samplebtn.position = new Vector3(-1,1.5,4)
+    // const slate = createSlate("Inventory", manager, false, {x: 0, y: 1.8,z:2}, .4)
+
+    const swordMat = createMat(scene, "swordMat", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
+
+
     const ground = createGround(scene)
     createRefbx(scene)
-    // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
-    // skybox.infiniteDistance = true;
-
-    // // Create SkyMaterial and apply it to the skybox
-    // const skyMaterial = new SkyMaterial("skyMaterial", scene);
-    // skyMaterial.backFaceCulling = false;
-
-    // skyMaterial.inclination = 0.1; // Sun position (0 is sunrise, 0.5 is noon, 1 is sunset)
-    // skyMaterial.turbidity = .5; // Lower turbidity for a clearer sky
-    // skyMaterial.luminance = .9; // Higher luminance for a brighter sky
-    // skyMaterial.rayleigh = 2; // Adjust the scattering of light
-
-    // skybox.material = skyMaterial;
-
-    // AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)
 
     await importAnimations("idle_anim.glb")
     await importAnimations("walk_anim.glb") //1
     // await importAnimations("jump_anim.glb")
     await importAnimations("jump_new.glb")
     await importAnimations("walkback_anim.glb")
+
     createHandMat(scene, true)
     const rHand = await importModelContainer(scene, './models/rightHand.glb')
     const lHand = await importModelContainer(scene, './models/leftHand.glb')
@@ -79,7 +87,7 @@ export async function createScene(_engine) {
         left: lHand
     }
 
-    let sessionMode = "immersive-vr"
+    let sessionMode = getSelectedImmMode()
     // let sessionMode = "inline"
 
     const xrHelper = await scene.createDefaultXRExperienceAsync({
@@ -89,7 +97,7 @@ export async function createScene(_engine) {
         },
         disableTeleportation: true
     })
-    xrHelper.pointerSelection.detach()
+    // xrHelper.pointerSelection.detach()
     // const featureManager = xrHelper.baseExperience.featuresManager;
 
     // featureManager.enableFeature(BABYLON.WebXRFeatureName.MOVEMENT, "latest", {
@@ -114,6 +122,7 @@ export async function createScene(_engine) {
     decimalMaterial.emissiveTexture.hasAlpha = true
     decimalMaterial.zOffset = -2
 
+
     // havok sphere
     // const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
 
@@ -132,29 +141,56 @@ export async function createScene(_engine) {
     //         decal.material = decimalMaterial
     //     }
     // ))
+   
+    scene.onPointerObservable.add((e) => {
+        if (e.type === PointerEventTypes.POINTERDOWN) {
+            const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
+            let pickInfo = scene.pickWithRay(ray);
+            
+            // if(pickInfo && pickInfo.pickedPoint){
+            //     const mc = getCharacter()
+            //     if(!mc) return log("no character")
+            //     const point = pickInfo.pickedPoint
+                
+            //     const bonePos = mc.neckNode.getAbsolutePosition()
+            //     var direction = point.subtract(bonePos);
+            //     direction.normalize();
+            //     var targetYaw = Math.atan2(direction.x, direction.z);
+            //     mc.neckNode.rotate(BABYLON.Axis.Y, targetYaw);
+            //     log(mc.neckNode.rotationQuaternion)
+            //     mc.skeleton.prepare()
+            //     // var diffX = point.x - mc.mainBody.position.x;
+            //     // var diffY = point.z - mc.mainBody.position.z;
+            //     // const angle = Math.atan2(diffX, diffY)
+            //     // log(mc.skeleton)
+            //     // mc.skeleton.bones.forEach(bone => {
+            //     //     if(bone.name.includes("Neck")){
+            //     //         var rotQ = new Quaternion.RotationYawPitchRoll(0, angle, 0);
+            //     //         bone.setRotationQuaternion(rotQ, Space.WORLD)
+            //     //         log(bone.rotationQuaternion)
+            //     //     }
+            //     // })
+            // }
+            // const clickedMeshName = pickInfo.pickedMesh.name.toLowerCase()
+            // const clickedPos = pickInfo.pickedMesh.getAbsolutePosition()
+            // const myDetail = getMyDetail()
+            // const myMesh = scene.getMeshByName(`player.${myDetail._id}`)
+            // if(!myMesh) return log('cannot find my mesh')
+            // const currentPos = myMesh.position
+            // log('will move')
+            // emitMove({
+            //     _id: myDetail._id, 
+            //     movementName: "clickedTarget",
+            //     loc: {x: currentPos.x, y: currentPos.y,z: currentPos.z}, 
+            //     direction: {x: clickedPos.x, y: currentPos.y, z: clickedPos.z} 
+            // })
+        }
+    });
 
-    // scene.onPointerObservable.add((e) => {
-    //     if (e.type === PointerEventTypes.POINTERDOWN) {
-    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
-    //         let pickInfo = scene.pickWithRay(ray);
-    //         const clickedMeshName = pickInfo.pickedMesh.name.toLowerCase()
-    //         const clickedPos = pickInfo.pickedMesh.getAbsolutePosition()
-    //         const myDetail = getMyDetail()
-    //         const myMesh = scene.getMeshByName(`player.${myDetail._id}`)
-    //         if(!myMesh) return log('cannot find my mesh')
-    //         const currentPos = myMesh.position
-    //         log('will move')
-    //         emitMove({
-    //             _id: myDetail._id, 
-    //             movementName: "clickedTarget",
-    //             loc: {x: currentPos.x, y: currentPos.y,z: currentPos.z}, 
-    //             direction: {x: clickedPos.x, y: currentPos.y, z: clickedPos.z} 
-    //           })
-    //     }
-    // });
     scene.registerBeforeRender(() => {
+        
         const deltaT = _engine.getDeltaTime() / 1000
-        players.forEach(pl => {
+        players.forEach(pl => {            
             if (pl._moving) {
                 // pl.anims[1].play()
                 
@@ -167,7 +203,7 @@ export async function createScene(_engine) {
                         if(pl.rootQuat){
                             const q = pl.rootQuat
                             const quat = new Quaternion(q.x,q.y,q.z,q.w)
-                            // Quaternion.SlerpToRef(pl.root.rotationQuaternion, new Quaternion(0,1,0,0), 0.1, pl.root.rotationQuaternion)
+                            Quaternion.SlerpToRef(pl.root.rotationQuaternion, new Quaternion(0,1,0,0), 0.1, pl.root.rotationQuaternion)
                             Quaternion.SlerpToRef(pl.mainBody.rotationQuaternion, quat, 0.1, pl.mainBody.rotationQuaternion)
                         }
                         pl.mainBody.locallyTranslate(new Vector3(0, 0, pl.currentSpd * deltaT * 1))
@@ -178,6 +214,22 @@ export async function createScene(_engine) {
                         pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
                         pl.mainBody.locallyTranslate(new Vector3(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ))
                     break
+                    case "vr-hands":
+                        // log("moving via vr hands")
+                        Quaternion.SlerpToRef(pl.root.rotationQuaternion, new Quaternion(0,1,0,0), 0.1, pl.root.rotationQuaternion)
+                        //  pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),0,0,0, Space.LOCAL)
+                        // Vector3.SlerpToRef(pl.mainBody.position, new Vector3(pl.camPosInWorld.x, pl.mainBody.position.y, pl.camPosInWorld.z), 0.1, pl.mainBody.position)
+                        pl.mainBody.position.x = pl.camPosInWorld.x
+                        pl.mainBody.position.z = pl.camPosInWorld.z
+                        pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
+                        
+                        // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
+                        // pl.mainBody.locallyTranslate(new Vector3(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ))
+                        // if(distance <= .1){
+                        //     pl._moving = false
+                        // }else pl._moving = true
+                        // log(distance)
+                    break
                 }
                 
                 // pl.mainBody.physicsBody.setLinearVelocity(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ)
@@ -186,7 +238,16 @@ export async function createScene(_engine) {
                 // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z),0,0,0)
                 if(!pl._actionName) blendAnimv2(pl, pl.anims[1], pl.anims, true)
             }
-            if(pl.headDirection){
+            
+            if(pl.camPosInWorld !== undefined && pl.camPosInWorld.x){
+                // const distance = Vector3.Distance(pl.mainBody.position, new Vector3(pl.camPosInWorld.x, pl.mainBody.position.y, pl.camPosInWorld.z))
+       
+                switch(pl.controller){               
+                    
+                }
+            }            
+            if(pl.headDirection && pl.controller === "vr-hands"){
+                
                 pl.neckNode.lookAt(new Vector3(pl.headDirection.x, pl.headDirection.y, pl.headDirection.z), Math.PI,Math.PI - Math.PI/8,0, BABYLON.Space.WORLD)
             }
         })
@@ -307,9 +368,41 @@ export function checkPlayers() {
         })
     }
 }
+export function checkSceneModels(){
+    const state = getState()
+    if (state !== "GAME") return log('Game is still not ready')
+    const modelsFromSocket = getAllImportedModelsInSocket()
+    if (modelsFromSocket.length) {
+        modelsFromSocket.forEach(socketModel => {
+            const modelAlreadyHere = modelsInScene.some(sceneModel => sceneModel._id === socketModel._id)
+            if (modelAlreadyHere) {
+                
+                if(socketModel.parentMeshId){
+                    const mesh = modelAlreadyHere.mesh
+                    const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
+                    if(parentPlayer) parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})                      
+                }
+                return log('model is already in scene ')
+            }else{
+                importCustomModel(socketModel.url).then( model => {        
+                    const Root = model.meshes[0]
+                    model.meshes[1].material = scene.getMaterialByName("swordMat")
+               
+                    if(socketModel.parentMeshId){
+                      const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
+                      if(parentPlayer) parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})                      
+                    }
+                    modelsInScene.push({...socketModel, mesh: Root})
+                })
+            }
+        })
+    }
+}
 export function getPlayersInScene() {
-
     return players
+}
+export function getThingsInScene(){
+    return things
 }
 export function playerDispose(playerDetail) {
     log(playerDetail)
@@ -318,9 +411,13 @@ export function playerDispose(playerDetail) {
         log(playerToDispose)
         playerToDispose.anims.forEach(anim => anim.dispose())
         playerToDispose.mainBody?.getChildren()[0].dispose()
+        playerToDispose.mainBody?.dispose()
 
         playerToDispose.leftHandControl?.dispose()
         playerToDispose.rightHandControl?.dispose()
+
+        playerToDispose.rHandMesh?.dispose()
+        playerToDispose.lHandMesh?.dispose()
 
         players = players.filter(pl => pl._id !== playerToDispose._id)
     }
@@ -361,3 +458,30 @@ function createHandMat(scene, isLight){
     handMat.backFaceCulling = true
     return handMat
 }
+
+
+
+
+
+
+
+
+
+
+
+
+    // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
+    // skybox.infiniteDistance = true;
+
+    // // Create SkyMaterial and apply it to the skybox
+    // const skyMaterial = new SkyMaterial("skyMaterial", scene);
+    // skyMaterial.backFaceCulling = false;
+
+    // skyMaterial.inclination = 0.1; // Sun position (0 is sunrise, 0.5 is noon, 1 is sunset)
+    // skyMaterial.turbidity = .5; // Lower turbidity for a clearer sky
+    // skyMaterial.luminance = .9; // Higher luminance for a brighter sky
+    // skyMaterial.rayleigh = 2; // Adjust the scattering of light
+
+    // skybox.material = skyMaterial;
+
+    // AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)

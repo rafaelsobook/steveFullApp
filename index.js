@@ -93,7 +93,17 @@ rooms.set(2, {
 rooms.set(3, {
     limit: 4,
     players: [],
-    sceneDescription: []
+    sceneDescription: [
+        // {
+        //     _id: "342421",
+        //     type: "equipment",
+        //     url: "./models/sword.glb",
+        //     pos: {x:0,y:1,z:0},
+        //     dir: {x:0,y:0,z:0},
+        //     isVisible: true,
+        //     parentMeshId: false
+        // }
+    ]
 })
 
 // app.use(express.json());
@@ -148,6 +158,7 @@ io.on("connection", socket => {
                 y: 0,
                 z: 0 // facing forward
             },
+            vrHandsVisible: false,
             quat: undefined,
             wristPos: false,
             wristQuat: false,
@@ -178,7 +189,24 @@ io.on("connection", socket => {
         // socket.emit('player', playerDetail)
         // io.emit('players-details', players)
     })
-
+    socket.on("create-something", data => {
+   
+        const {roomNum, entityType, entityUrl, entityId, _id} = data
+        const room = rooms.get(roomNum)
+        if(!room) return log('room not found')
+        const entity = room.sceneDescription.find(entity => entity._id === entityId)
+        if(entity) return log("entity already made")
+        room.sceneDescription.push({
+            _id: entityId,
+            type: entityType,// "equipment",
+            url:  entityUrl, //"./models/sword.glb",
+            pos: {x:.1,y:0,z:-.06},
+            dir: {x:0,y:0,z:0},
+            isVisible: true,
+            parentMeshId: _id
+        })
+        io.to(roomNum).emit("scene-updated", room.sceneDescription)
+    })
     // movements
     let fps = 20
     let spd = .3 / fps
@@ -193,6 +221,8 @@ io.on("connection", socket => {
                 playerToMove.movement = data.movement
                 playerToMove.quat = data.quat
                 playerToMove.controller = data.controllerType
+                playerToMove.camPosInWorld = data.camPosInWorld
+                playerToMove._moving = true
                 // playerToMove.wristPos = wristPos
 
                 io.to(key).emit("a-player-moved", value.players)
@@ -206,6 +236,7 @@ io.on("connection", socket => {
                 playerToStop.dir = data.direction
                 playerToStop.movement = data.movement
                 playerToStop.loc = data.loc
+                playerToStop._moving = false
                 io.to(key).emit("player-stopped", playerToStop)
             }
         }
@@ -243,7 +274,7 @@ io.on("connection", socket => {
     // vr
     socket.on("moving-hands", data => {
         const { wristPos, wristQuat, headDirection, camQuat, fingerCoord } = data
-        log(camQuat)
+      
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {
@@ -255,13 +286,23 @@ io.on("connection", socket => {
             }
         }
     })
-
+    socket.on("hide-or-show-hands", data => {
+       
+        for (const [key, value] of rooms) {
+            let player = value.players.find(pl => pl._id === data._id)
+            if (player) {
+                player.vrHandsVisible = data.isVisible
+                io.to(key).emit("hide-or-show-hands", value.players)
+            }
+        }
+    })
     socket.on('disconnect', () => {
         for (const [key, value] of rooms) {
             const disconnectedPlayer = value.players.find(pl => pl.socketId === socket.id)
             if (disconnectedPlayer) {
                 log(`${disconnectedPlayer.name} is disconnected`)
                 value.players = value.players.filter(pl => pl.socketId !== disconnectedPlayer.socketId)
+                value.sceneDescription = value.sceneDescription.filter(model => model.parentMeshId !== disconnectedPlayer.socketId)
                 io.to(key).emit("player-dispose", disconnectedPlayer)
             }
         }

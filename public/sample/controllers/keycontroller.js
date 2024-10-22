@@ -15,7 +15,7 @@ export function initKeyControls(scene) {
     window.addEventListener("keydown", e => {
         const cam = scene.getCameraByName("cam")
         const keypressed = e.key.toLowerCase()
-        log(keypressed)
+
         let willMove = false
         let myCharacterInScene = getCharacter()
         if (!myCharacterInScene) return log(myCharacterInScene)

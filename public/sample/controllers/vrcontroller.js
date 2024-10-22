@@ -1,9 +1,10 @@
 import { displayTxt } from "../createDisplay.js"
-import { importCustomModel, setMeshesVisibility } from "../creations.js"
+import { importCustomModel, setMeshesVisibility, setMeshPos } from "../creations.js"
+import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel, openClosePanel } from "../guitool/gui3dtool.js"
 import { createButtonForHand } from "../guitool/guitool.js"
-import { createOptScreen } from "../guitool/vrui.js"
+import { createMenuVOne, createMenuVTwo, getMenuScreen } from "../guitool/vrui.js"
 import { getCharacter } from "../index.js"
-import { emitMove, emitStop, getSocket } from "../socket/socketLogic.js"
+import { emitMove, emitStop, getMyDetail, getSocket } from "../socket/socketLogic.js"
 const { Vector3,Color3,MeshBuilder, Axis,StandardMaterial,WebXRFeatureName, WebXRHandJoint, GizmoManager, Quaternion} = BABYLON
 const log = console.log
 
@@ -11,14 +12,261 @@ export async function initVrStickControls(scene, xr){
     let cam = xr.baseExperience.camera
     let myChar = getCharacter()
     const camPosY = 1.7
-    // Create a material
-   
-
     const {text1, text2, nameMesh} = displayTxt(cam, scene)
-
-   
     let isTriggeredStop = false
     let isUsingController = false
+
+    let isCharacterAndCameraMade = setInterval( async () => {
+        myChar = getCharacter()
+        cam = xr.baseExperience.camera
+        log("check isCharacterAndCameraMade ...")
+        if(myChar && cam){
+            log("isCharacterAndCameraMade Is Done checking ...")
+            clearInterval(isCharacterAndCameraMade)
+
+            let myPos = myChar.mainBody.position
+            setMeshPos(cam, {x: myPos.x, y: camPosY, z: myPos.z})
+
+            const socket = getSocket()
+            //  HAND TRACKING
+            try {
+                const handFeature = xr.baseExperience.featuresManager.enableFeature(WebXRFeatureName.HAND_TRACKING, "latest", {
+                    xrInput: xr.input
+                })
+                let rendererForHand
+                let l_indxTip
+                let l_middleTip
+                let l_wrist
+
+                let r_wrist
+                let leftJointMeshes = undefined
+                let rightJointMeshes = undefined
+
+                let l_vrhand
+                let r_vrhand
+                
+                let tipBx
+                handFeature.onHandAddedObservable.add( hand => {
+                  
+                    if(!myChar) return console.warn("fix error myCharacter not yet made and vr is loaded already")
+                    myPos = myChar.mainBody.position
+                    const side = hand.xrController.inputSource.handedness
+                    // cam.position.x = myPos.x
+                    // cam.position.y = camPosY
+                    // cam.position.z = myPos.z
+                    
+                    nameMesh.position = cam.getFrontPosition(2) 
+
+                    if(side === "right" && r_wrist === undefined) {
+                        r_vrhand = hand.handMesh
+                        rightJointMeshes = hand._jointMeshes
+                        myChar.rHandMesh.isVisible = false
+                        r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
+                        
+                    }
+                    if(side === "left" && l_wrist === undefined && !leftJointMeshes) {  
+                        l_vrhand = hand.handMesh 
+                        leftJointMeshes = hand._jointMeshes
+                        myChar.lHandMesh.isVisible = false             
+                        l_indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)
+                        
+                        // tipBx.parent = l_indxTip
+                        l_middleTip = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_TIP)
+                        l_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
+                        
+                    } 
+                })
+                handFeature.onHandRemovedObservable.add( () => {
+                    const myDetail = getMyDetail()
+                    socket.emit("hide-or-show-hands", {roomNum: myDetail.roomNum, _id: myDetail._id, isVisible: false})
+                })
+
+                
+                // creation for VR UI Tools
+                const toRotateBones = [...getControllableJoint("left"),...getControllableJoint("right")]
+                // interval for checking if you have already loaded your vr hands in the scene
+                // if it does we are going to attach UI in your hands and create other UI for your menu
+                // the onHandAddedObservable triggers when you load your left or right hand. somtimes only the left or right hand is loaded we need both of them to be ready before we init all the UI
+                let interval = setInterval(() => {
+                    // log("searching for both hands")
+                    if(r_wrist || l_wrist) { clearInterval(interval)
+                        const menuScreen = createMenuVTwo(scene, false)
+                        tipBx = MeshBuilder.CreateSphere("asd", { diameter: .2/10, segments: 4}, scene);tipBx.isVisible =false
+                        // const screen = createMenuVOne(scene, false)
+                        const r_wrist_btn = createButtonForHand("Menu", r_wrist, scene, tipBx, () => {
+                            // screen.isVisible = !screen.isVisible
+                            menuScreen.position = cam.getFrontPosition(.4)
+                            menuScreen.node.lookAt(cam.getFrontPosition(.1),Math.PI,0,0)
+                            // screen.lookAt(cam.getFrontPosition(.1),0,0,0)
+                            // screen.isVisible ? xr.pointerSelection.attach() : xr.pointerSelection.detach()
+
+                            if(!menuScreen) return
+                            
+                            menuScreen.isVisible = !menuScreen.isVisible
+                            menuScreen.children.forEach(chldControl =>{
+                                // chldControl.isVisible = !chldControl.isVisible
+                                openClosePanel(chldControl, menuScreen.isVisible)
+                            })
+                        })
+
+                        r_wrist_btn.position = new Vector3(0,-2,0)
+                        r_wrist_btn.addRotation(-Math.PI/2, Math.PI,0)
+                    }
+                }, 100)
+
+                let forwardDir = cam.getDirection(BABYLON.Vector3.Forward()).normalize();
+                let camPosInWorld = {x: cam.position.x, y: camPosY, z: cam.position.z}
+
+                let stopTimeOut
+                scene.onBeforeRenderObservable.remove(rendererForHand)
+                rendererForHand = scene.onBeforeRenderObservable.add(() => {
+                    const deltaT = scene.getEngine().getDeltaTime()/1000
+                    if(xr.baseExperience.camera){
+                        forwardDir = cam.getDirection(BABYLON.Vector3.Forward()).normalize();
+                        camPosInWorld = {x: cam.position.x, y: camPosY, z: cam.position.z}
+                        // log(dir)
+                        // cam.position.addInPlace(new Vector3(forwardDir.x*deltaT, 0, forwardDir.z*deltaT))
+                    }
+                    cam.position.y = camPosY
+                    if(isUsingController) return
+                    if(!l_wrist || !r_wrist) return 
+                    if(!myChar) return
+                
+                    const camFrontWorldPos = cam.getFrontPosition(2)
+                    nameMesh.position = camFrontWorldPos
+
+                    const lWristPos = l_wrist.position
+                    const rWristPos = r_wrist.position
+
+                    const lWristQuat = l_wrist.rotationQuaternion;
+                    const rWristQuat = r_wrist.rotationQuaternion;
+
+                    if(tipBx) tipBx.position = l_indxTip.getAbsolutePosition()
+
+                    myChar.lHand.position = lWristPos
+                    myChar.rHand.position = rWristPos
+
+                    myChar.lHand.rotationQuaternion = lWristQuat
+                    myChar.rHand.rotationQuaternion = rWristQuat
+
+                    // btn.position = r_wrist.getAbsolutePosition()
+
+                    if(leftJointMeshes && rightJointMeshes){
+                        // log(l_indxTip.rotationQuaternion)
+                        // log(`vrIndxPosX: ${l_indxTip.position.x}, vrIndxAbsPosX: ${l_indxTip.getAbsolutePosition().x}`)
+                        let fingerCoord = []
+                        leftJointMeshes.forEach(joint => {
+                            const isBoneNotValid = toRotateBones.some(bneName => bneName === joint.name)
+                            if(!isBoneNotValid) return 
+                            const bone = myChar.lHandBones.find(bone => bone.name === joint.name)
+                            if(!bone) return 
+                            const boneNode = bone.getTransformNode()
+
+                            const wristRotation = myChar.lHand.rotationQuaternion
+                            const fingerRotation = joint.rotationQuaternion;
+                            
+                            const jointAbsPos = joint.getAbsolutePosition()
+                            boneNode.setAbsolutePosition(new Vector3(jointAbsPos.x,jointAbsPos.y,jointAbsPos.z))
+                            // boneNode.position =jointAbsPos
+                            fingerCoord.push({name: bone.name, x: jointAbsPos.x,y:jointAbsPos.y,z:jointAbsPos.z})
+                        })
+                        rightJointMeshes.forEach(joint => {
+                            const isBoneNotValid = toRotateBones.some(bneName => bneName === joint.name)
+                            if(!isBoneNotValid) return 
+                            const bone = myChar.rHandBones.find(bone => bone.name === joint.name)
+                            if(!bone) return 
+                            const boneNode = bone.getTransformNode()
+
+                            const wristRotation = myChar.lHand.rotationQuaternion
+                            const fingerRotation = joint.rotationQuaternion;
+                            
+                            const jointAbsPos = joint.getAbsolutePosition()
+                            boneNode.setAbsolutePosition(new Vector3(jointAbsPos.x,jointAbsPos.y,jointAbsPos.z))
+                            // boneNode.position =jointAbsPos
+                            fingerCoord.push({name: bone.name, x: jointAbsPos.x,y:jointAbsPos.y,z:jointAbsPos.z})
+                        })
+                        const camQ = cam.rotationQuaternion
+                        socket.emit("moving-hands", {
+                            _id: myChar._id,
+                            wristPos: { 
+                                left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
+                                right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
+                            },
+                            wristQuat:{ 
+                                left: { x: lWristQuat.x, y:lWristQuat.y, z: lWristQuat.z, w: lWristQuat.w }, 
+                                right: { x: rWristQuat.x, y:rWristQuat.y, z: rWristQuat.z, w: rWristQuat.w } 
+                            },
+                            fingerCoord,
+                            camQuat: {x: camQ.x, y:camQ.y, z:camQ.z},
+                            headDirection: {x: camFrontWorldPos.x, y: camFrontWorldPos.y, z: camFrontWorldPos.z}
+                        })
+                    }
+        
+                    // text1.text = `lwristPosX: ${l_wrist.position.x} rWristPos: ${r_wrist.position.x}`
+                
+                    let indxAndMiddleDistance = Vector3.Distance(l_indxTip.position, l_middleTip.position)
+                    // text1.text = `distance ${indxAndMiddleDistance}`
+                    // let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
+                    // let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
+                    const cPos = myChar.mainBody.position
+                    // const tPos = {x:cPos.x + frontPos.x , y: 1, z:cPos.z + frontPos.z}
+                    const tPos = {x: camFrontWorldPos.x, y: camPosY, z: camFrontWorldPos.z}
+
+                    const camPosClone = cam.position.clone()
+                    camPosClone.y = myChar.mainBody.position.y
+                    const distance = Vector3.Distance(myChar.mainBody.position, camPosClone)
+                    
+                    // log(`distance from XRCamera ${parseFloat(distance)}`)
+                    // log(distance)
+                    if(indxAndMiddleDistance <= 0.02){
+                        cam.position.addInPlace(new Vector3(forwardDir.x*deltaT, 0, forwardDir.z*deltaT))
+                        // no need to emit move here the distance will detect how far the camera is
+                    }
+
+                    if(distance > 0.04){
+                        emitMove({
+                            _id: myChar._id,
+                            movement: { moveX: 0, moveZ: 0 },
+                            direction: tPos,
+                            camPosInWorld,
+                            // wristPos: { 
+                            //     left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
+                            //     right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
+                            // },
+                            controllerType: 'vr-hands'
+                        }) 
+                        clearTimeout(stopTimeOut)
+                        stopTimeOut = setTimeout(() => {
+                            emitStop({
+                                _id: myChar._id,
+                                movement: { moveX: 0, moveZ: 0 },
+                                loc: {x: cPos.x, y: cPos.y, z: cPos.z},
+                                direction: tPos,
+                                controllerType: 'vr-hands',
+                                camPosInWorld
+                            })
+                        }, 100)
+                    }
+                    
+                    // emitMove({
+                    //     _id: myChar._id,
+                    //     movement: { moveX: 0, moveZ: 1 },
+                    //     direction: tPos,
+                    //     camPosInWorld,
+                    //     // wristPos: { 
+                    //     //     left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
+                    //     //     right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
+                    //     // },
+                    //     controllerType: 'vr-hands'
+                    // }) 
+                    
+                    // text1.text = `camX ${parseFloat(camPosInWorld.x)}, camZ: ${camPosInWorld.z}`
+                })
+            } catch (error) {
+                log(error)
+            }
+        }
+    }, 100)
     // for motion controllers
     xr.input.onControllerAddedObservable.add(controller => {
         controller.onMotionControllerInitObservable.add(mc => {
@@ -28,16 +276,16 @@ export async function initVrStickControls(scene, xr){
             
             nameMesh.position = cam.position;
             nameMesh.position.z += 1
-            if(!myChar) return log("not found character")
+            if(!myChar) return 
             setMeshesVisibility(myChar.root.getChildren()[0].getChildren(), false)
             cam.position.x = myPos.x
             cam.position.y = camPosY
             cam.position.z = myPos.z
             if(mc.handedness === "left"){
                 let thumbstickComponent = mc.getComponent(mc.getComponentIds()[2]);
-                log(thumbstickComponent)
-                if(!thumbstickComponent) return log("thumbstickComponent not found")
-                log("thumbstickComponent is FOUND !")
+                // log(thumbstickComponent)
+                if(!thumbstickComponent) return 
+                // log("thumbstickComponent is FOUND !")
                 thumbstickComponent.onButtonStateChangedObservable.add(() => { 
                   
                 })
@@ -89,241 +337,8 @@ export async function initVrStickControls(scene, xr){
             }
         })
     })
-    //  HAND TRACKING
-    try {
-        const handFeature = xr.baseExperience.featuresManager.enableFeature(WebXRFeatureName.HAND_TRACKING, "latest", {
-            xrInput: xr.input
-        })
-        let rendererForHand
-        let l_indxTip
-        let l_middleTip
-        let l_wrist
 
-        let r_wrist
-        let leftJointMeshes = undefined
-        let rightJointMeshes = undefined
-        
-
-        const gm = new GizmoManager(scene, 1)
-        gm.positionGizmoEnabled = true
-        gm.usePointerToAttachGizmos = true;
-        gm.gizmos.positionGizmo.xGizmo.isNearPickable = true;
-        gm.gizmos.positionGizmo.yGizmo.isNearPickable = true;
-        gm.gizmos.positionGizmo.zGizmo.isNearPickable = true;
-
-        let l_vrhand
-        let r_vrhand
-        
-        let tipBx
-        handFeature.onHandAddedObservable.add( hand => {
-            // hand.handMesh.material = handMat
-            // log(hand.handMesh.material)
-            myChar = getCharacter()               
-
-            const myPos = myChar.mainBody.position
-            const side = hand.xrController.inputSource.handedness
-            cam.position.x = myPos.x
-            cam.position.y = camPosY
-            cam.position.z = myPos.z
-            
-            nameMesh.position = cam.getFrontPosition(2) 
-
-            if(side === "right" && r_wrist === undefined) {
-                r_vrhand = hand.handMesh
-                rightJointMeshes = hand._jointMeshes
-                myChar.rHandMesh.isVisible = false
-                r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
-                
-            }
-            if(side === "left" && l_wrist === undefined && !leftJointMeshes) {  
-                l_vrhand = hand.handMesh 
-                leftJointMeshes = hand._jointMeshes
-                myChar.lHandMesh.isVisible = false             
-                l_indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)
-                
-                // tipBx.parent = l_indxTip
-                l_middleTip = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_TIP)
-                l_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
-                gm.attachToMesh(myChar.lHandMesh)
-            } 
-        })
-        // handFeature.onHandRemovedObservable.add( () => {
-        //     // scene.useRightHandedSystem = false
-        //     // gr.addRotation(Math.PI,0,0)
-        //     log("detected hand removed")
-        // })
-
-        const socket = getSocket()
-        // const toRotateBones = [
-        //     "left-handJoint-7",
-        //     "left-handJoint-12",
-        //     "left-handJoint-17",
-        //     "left-handJoint-22",
-
-        //     "left-handJoint-8",
-        //     "left-handJoint-18",
-        //     "left-handJoint-23",
-        //     "left-handJoint-13",
-
-        //     "left-handJoint-24",
-        //     "left-handJoint-19",
-        //     "left-handJoint-14",
-        //     "left-handJoint-9",
-
-        //     "left-handJoint-3",
-        //     "left-handJoint-4",
-
-        //     // "left-handJoint-15",
-        //     // "left-handJoint-20",
-
-        //     // "left-handJoint-2",
-        //     // "left-handJoint-6",
-        //     // "left-handJoint-11",
-        //     // "left-handJoint-16",
-        //     // "left-handJoint-21"
-        // ]
-        
-
-        // creation for VR UI Tools
-        const toRotateBones = [...getControllableJoint("left"),...getControllableJoint("right")]
-        log(toRotateBones)
-        let interval = setInterval(() => {
-            log("searching for both hands")
-            if(r_wrist || l_wrist) { clearInterval(interval)
-                tipBx = MeshBuilder.CreateSphere("asd", { diameter: .2/10, segments: 4}, scene);tipBx.isVisible =false
-                const screen = createOptScreen(scene, false)
-                const r_wrist_btn = createButtonForHand("Menu", r_wrist, scene, tipBx, () => {
-                    screen.isVisible = !screen.isVisible
-                    screen.position = cam.getFrontPosition(1.1)
-                    screen.lookAt(cam.getFrontPosition(.1),0,0,0)
-                    screen.isVisible ? xr.pointerSelection.attach() : xr.pointerSelection.detach()
-                })
-
-                r_wrist_btn.position = new Vector3(0,-2,0)
-                r_wrist_btn.addRotation(-Math.PI/2, Math.PI,0)
-            }
-        }, 100)
-
-        
-        scene.onBeforeRenderObservable.remove(rendererForHand)
-        rendererForHand = scene.onBeforeRenderObservable.add(() => {
-            
-            if(isUsingController) return
-            if(!l_wrist || !r_wrist) return 
-            if(!myChar) return
-           
-            const camFrontWorldPos = cam.getFrontPosition(2)
-            nameMesh.position = camFrontWorldPos
-
-            const lWristPos = l_wrist.position
-            const rWristPos = r_wrist.position
-
-            const lWristQuat = l_wrist.rotationQuaternion;
-            const rWristQuat = r_wrist.rotationQuaternion;
-
-            if(tipBx) tipBx.position = l_indxTip.getAbsolutePosition()
-
-            myChar.lHand.position = lWristPos
-            myChar.rHand.position = rWristPos
-
-            myChar.lHand.rotationQuaternion = lWristQuat
-            myChar.rHand.rotationQuaternion = rWristQuat
-
-            // btn.position = r_wrist.getAbsolutePosition()
-
-            if(leftJointMeshes && rightJointMeshes){
-                // log(l_indxTip.rotationQuaternion)
-                // log(`vrIndxPosX: ${l_indxTip.position.x}, vrIndxAbsPosX: ${l_indxTip.getAbsolutePosition().x}`)
-                let fingerCoord = []
-                leftJointMeshes.forEach(joint => {
-                    const isBoneNotValid = toRotateBones.some(bneName => bneName === joint.name)
-                    if(!isBoneNotValid) return 
-                    const bone = myChar.lHandBones.find(bone => bone.name === joint.name)
-                    if(!bone) return 
-                    const boneNode = bone.getTransformNode()
-
-                    const wristRotation = myChar.lHand.rotationQuaternion
-                    const fingerRotation = joint.rotationQuaternion;
-                    
-                    const jointAbsPos = joint.getAbsolutePosition()
-                    boneNode.setAbsolutePosition(new Vector3(jointAbsPos.x,jointAbsPos.y,jointAbsPos.z))
-                    // boneNode.position =jointAbsPos
-                    fingerCoord.push({name: bone.name, x: jointAbsPos.x,y:jointAbsPos.y,z:jointAbsPos.z})
-                })
-                rightJointMeshes.forEach(joint => {
-                    const isBoneNotValid = toRotateBones.some(bneName => bneName === joint.name)
-                    if(!isBoneNotValid) return 
-                    const bone = myChar.rHandBones.find(bone => bone.name === joint.name)
-                    if(!bone) return 
-                    const boneNode = bone.getTransformNode()
-
-                    const wristRotation = myChar.lHand.rotationQuaternion
-                    const fingerRotation = joint.rotationQuaternion;
-                    
-                    const jointAbsPos = joint.getAbsolutePosition()
-                    boneNode.setAbsolutePosition(new Vector3(jointAbsPos.x,jointAbsPos.y,jointAbsPos.z))
-                    // boneNode.position =jointAbsPos
-                    fingerCoord.push({name: bone.name, x: jointAbsPos.x,y:jointAbsPos.y,z:jointAbsPos.z})
-                })
-                const camQ = cam.rotationQuaternion
-                socket.emit("moving-hands", {
-                    _id: myChar._id,
-                    wristPos: { 
-                        left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
-                        right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
-                    },
-                    wristQuat:{ 
-                        left: { x: lWristQuat.x, y:lWristQuat.y, z: lWristQuat.z, w: lWristQuat.w }, 
-                        right: { x: rWristQuat.x, y:rWristQuat.y, z: rWristQuat.z, w: rWristQuat.w } 
-                    },
-                    fingerCoord,
-                    camQuat: {x: camQ.x, y:camQ.y, z:camQ.z},
-                    headDirection: {x: camFrontWorldPos.x, y: camFrontWorldPos.y, z: camFrontWorldPos.z}
-                })
-            }
- 
-            // text1.text = `lwristPosX: ${l_wrist.position.x} rWristPos: ${r_wrist.position.x}`
-           
-            let indxAndMiddleDistance = Vector3.Distance(l_indxTip.position, l_middleTip.position)
-            text1.text = `distance ${indxAndMiddleDistance}`
-            let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
-            let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
-            const cPos = myChar.mainBody.position
-            const tPos = {x:cPos.x + frontPos.x , y: 1, z:cPos.z + frontPos.z}
-            if(indxAndMiddleDistance > 0.02) {                    
-                if(isTriggeredStop) return
-                emitStop({
-                    _id: myChar._id,
-                    movement: { moveX: 0, moveZ: 0 },
-                    loc: {x: cPos.x, y: cPos.y, z: cPos.z},
-                    direction: tPos,
-                    controllerType: 'mobile-joystick'
-                })
-                return isTriggeredStop = true                        
-            }
-            isTriggeredStop = false
-          
-            emitMove({
-                _id: myChar._id,
-                movement: { moveX: 0, moveZ: 1 },
-                direction: tPos,
-                // wristPos: { 
-                //     left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
-                //     right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
-                // },
-                controllerType: 'mobile-joystick'
-            }) 
-            cam.position.x = cPos.x
-            cam.position.y = camPosY
-            cam.position.z = cPos.z
-            text1.text = `cPos ${cPos.x}, tPos: ${tPos.x}`
-        })
-    } catch (error) {
-        log(error)
-    }
 }
-
-
 
 function inspectToString(obj) {
     

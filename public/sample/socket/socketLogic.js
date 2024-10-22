@@ -1,11 +1,11 @@
-import { importCustomModel } from "../creations.js"
+import { createGizmo, importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
 import { getInitialPlayer } from "../dropdown.js"
 import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
-import { blendAnimv2, checkPlayers, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
+import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
 
-const { MeshBuilder, Vector3, Space, Quaternion } = BABYLON
+const { MeshBuilder, Vector3, Space, Quaternion, GizmoManager } = BABYLON
 const log = console.log
 const listElement = document.querySelector(".room-lists")
 
@@ -27,7 +27,12 @@ listElement.addEventListener("click", e => {
     roomNumber,
     avatarUrl: user.avatarUrl
   })
-  document.querySelector(".dropdown").style.display = "none"
+  document.querySelectorAll(".dropdown").forEach(elem => elem.style.display = "none")
+  const videoLobbyelem = document.getElementById("video-chat-lobby")
+  setTimeout(() => {
+    videoLobbyelem.style.pointerEvents = "none"
+    videoLobbyelem.style.display = "none"
+  }, 7000)
 })
 export function getSocket() {
   return socket
@@ -65,6 +70,7 @@ export function initializeSocket() {
 
     updateAllPlayers(allPlayers)  
     checkPlayers()
+    checkSceneModels()
   })
   socket.on('who-am-i', detail => {
     myDetail = detail
@@ -79,9 +85,20 @@ export function initializeSocket() {
   socket.on('scene-updated', sceneDescriptionList => {
     const scene = getScene()
     if(!scene) return log("scene not ready")
-
+    // const gm = new GizmoManager(scene, 1)
+    // gm.positionGizmoEnabled = true
+    // gm.rotationGizmoEnabled  = true
+    // gm.usePointerToAttachGizmos = false;
+    
+    log("scene updated ")
     sceneDescriptionList.forEach( desc => {
 
+      if(desc.type === "equipment"){
+        const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
+        if(modelAlreadyHere) return
+        importedModelsInServer.push(desc)
+        checkSceneModels()
+      }
       if(desc.type === "hlsurl"){
         const engine = scene.getEngine()
         // Create the video element
@@ -145,8 +162,7 @@ export function initializeSocket() {
                 );
             });
         }
-      }
-    
+      }    
       if(desc.type === "primitive"){
         let model
         let error=false
@@ -197,7 +213,7 @@ export function initializeSocket() {
             // player.rHand.isVisible = false
             return
           }
-
+          setMeshesVisibility([player.rHandMesh, player.lHandMesh], true)
           // updating other player hand pos
           player.lHand.position.x = wristPos.left.x
           player.lHand.position.y = wristPos.left.y
@@ -219,7 +235,7 @@ export function initializeSocket() {
           player.rHand.rotationQuaternion.w = wristQuat.right.w
 
           if(headDirection) {
-            log(headDirection)
+            // log(headDirection)
             player.headDirection = headDirection
             // player.neckNode.lookAt(new Vector3(headDirection.x, headDirection.y, headDirection.z), Math.PI,Math.PI - Math.PI/8,0, Space.WORLD)
           }
@@ -242,6 +258,14 @@ export function initializeSocket() {
       }
     })
   })
+  socket.on("hide-or-show-hands", playersInRoom => {
+    playersInRoom.forEach(data => {
+      const playersInScene = getPlayersInScene()
+      const player = playersInScene.find(pl => pl._id === data._id)
+      if (player) setMeshesVisibility([player.rHandMesh, player.lHandMesh], data.vrHandsVisible)
+        
+    })
+  })
   // movements
   socket.on("a-player-moved", playersInRoom => {
     // log(playersInRoom)
@@ -249,31 +273,20 @@ export function initializeSocket() {
       const playersInScene = getPlayersInScene()
       const playerThatMoved = playersInScene.find(pl => pl._id === data._id)
       if (playerThatMoved) {
-        const { dir, movement, wristPos, quat, controller } = data
-        if(movement.moveX == 0 && movement.moveZ===0) return
+        const { camPosInWorld, dir, movement, wristPos, quat, controller } = data
+        // log(camPosInWorld)
+        if(movement.moveX == 0 && movement.moveZ===0 && controller !=="vr-hands") return
         const loc = playerThatMoved.mainBody.position
         const plMove = playerThatMoved.movement
-        if(movement.moveX == 0 && movement.moveZ===0) return
-        if(movement.moveX !== plMove.moveX || movement.moveZ !== plMove.moveZ){
-            
-          rotateAnim({x:movement.moveX, y:loc.y, z: movement.moveZ}, playerThatMoved.root, playerThatMoved.rotationAnimation, getScene(), 2)  
-        }
+
         playerThatMoved.dir = dir
         playerThatMoved.movement = movement
-        playerThatMoved._moving = true
+        playerThatMoved._moving = data._moving
         playerThatMoved.rootQuat = quat
         playerThatMoved.controller = controller
-        if(playerThatMoved._id !== getMyDetail()._id){
-          // playerThatMoved.leftHandControl.position.x = wristPos.left.x
-          // playerThatMoved.leftHandControl.position.y = wristPos.left.y
-          // playerThatMoved.leftHandControl.position.z = wristPos.left.z
+        if(camPosInWorld) playerThatMoved.camPosInWorld = camPosInWorld
+        
 
-          // playerThatMoved.rightHandControl.position.x = wristPos.right.x
-          // playerThatMoved.rightHandControl.position.y = wristPos.right.y
-          // playerThatMoved.rightHandControl.position.z = wristPos.right.z
-
-
-        }
       }
     })
   })
@@ -282,6 +295,7 @@ export function initializeSocket() {
     const playersInScene = getPlayersInScene()
     const plThatStopped = playersInScene.find(pl => pl._id === data._id)
     if (plThatStopped) {
+      // log("player stopped !")
       plThatStopped.mainBody.position.x = data.loc.x
       plThatStopped.mainBody.position.z = data.loc.z
       blendAnimv2(plThatStopped, plThatStopped.anims[0], plThatStopped.anims, true)
@@ -353,8 +367,9 @@ export function emitAction(actionDetail) {
 function updateAllPlayers(_newPlayers, _newModels) {
   playersInServer = _newPlayers
   // importedModelsInServer = _newModels
-  log(playersInServer)
+  // log(playersInServer)
 }
+
 export function getMyDetail() {
   return myDetail
 }
@@ -362,7 +377,7 @@ export function getAllPlayersInSocket() {
   return playersInServer
 }
 export function getAllImportedModelsInSocket(){
-
+  return importedModelsInServer
 }
 
 

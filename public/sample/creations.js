@@ -1,8 +1,9 @@
 import { setGizmo } from "./guitool/gizmos.js";
+import { create3DGuiManager, createThreeDBtn, createThreeDPanel } from "./guitool/gui3dtool.js";
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
-const {Quaternion,Matrix,Mesh, Space, Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
+const {Quaternion,StandardMaterial,Texture,Color3,Matrix,Mesh, Space, Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
 const log = console.log
 
 
@@ -31,8 +32,8 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     const lHandMesh = lHand.getChildren()[1]; lHandMesh.material=handMat
     const rHandBones = rightInstance.skeletons[0].bones
     const lHandBones = leftInstance.skeletons[0].bones
-    // rHandMesh.isVisible = true
-    // lHandMesh.isVisible = true
+    rHandMesh.isVisible = detail.vrHandsVisible 
+    lHandMesh.isVisible = detail.vrHandsVisible 
     // setInterval(() => {
     //     rHand.position.x += .5
     //     const thumbTip = rHandBones.find(bne => bne.name === "right-handJoint-0")
@@ -74,7 +75,7 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
             // const refBox = MeshBuilder.CreateBox("refBox", {}, scene)
             // createGizmo(scene, refBox)
             
-            neckNode.rotationQuaternion = Quaternion.Identity() //Quaternion.FromEulerVector(refBox.rotation)
+            // neckNode.rotationQuaternion = Quaternion.Zero() //Quaternion.FromEulerVector(refBox.rotation)
             // scene.registerBeforeRender(() =>{
             //     const camDir = scene.activeCamera.getForwardRay().direction
 
@@ -108,7 +109,7 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     mainBody.position = new Vector3(loc.x, 1, loc.z)
     mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
     mainBody.isVisible = false
-    mainBody.visibility = .6
+    mainBody.visibility = .3
     mainBody.rotationQuaternion = Quaternion.FromEulerVector(mainBody.rotation)
     root.parent = mainBody
     root.position = new Vector3(0,-1,0)
@@ -117,6 +118,8 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         scene.activeCamera.setTarget(mainBody)
         scene.activeCamera.alpha = -Math.PI / 2
         scene.activeCamera.beta = 1
+    
+        // panel.linkToTransformNode(mainBody)
     }
 
     const rotationAnimation = new Animation("rotationAnimation", "rotation.y", 60, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
@@ -209,6 +212,9 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         // leftHandControl.isVisible = false
         // rightHandControl.isVisible = false
     }
+
+
+
     return {
         _id,
         dir,
@@ -225,6 +231,7 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         currentSpd,
         canRotate: true,
         weightInterval: undefined,
+        skeleton,
 
         leftHandControl,
         rightHandControl,
@@ -278,6 +285,31 @@ export function createMesh(scene, pos, meshShape){
 }
 
 // tools
+export function createMat(scene, matName, _diffTex, _bumpTex, _roughTex){
+    const mat = new StandardMaterial(matName ? matName : "material", scene)
+    if(_diffTex) mat.diffuseTexture = new Texture(_diffTex,scene, false, false)
+    if(_bumpTex) mat.bumpTexture = new Texture(_bumpTex, scene,false, false)
+    if(_roughTex) mat.specularTexture = new Texture(_roughTex, scene,false, false)
+    // mat.specularColor = new Color3(.1,.1,.1)
+    // mat.metallic = 1
+    return mat
+}
+export function parentAMesh(_childMesh, _parentMesh, _chldPos, _chldScaleXYZUnit, _chldRotQuat){
+    if(!_childMesh) return log("childMesh undefined")
+    if(!_parentMesh) return  log("_parentMesh undefined")
+    
+    _childMesh.parent = _parentMesh
+    _childMesh.scaling = new Vector3(_chldScaleXYZUnit,_chldScaleXYZUnit,_chldScaleXYZUnit)
+    _childMesh.position = new Vector3(_chldPos.x, _chldPos.y,_chldPos.z)
+    _childMesh.rotationQuaternion = new Quaternion(_chldRotQuat.x,_chldRotQuat.y,_chldRotQuat.z,_chldRotQuat.w)
+    log("success parenting mesh")
+}
+export function setMeshPos(_mesh, _desiredPos){
+    _mesh.position.x = _desiredPos.x
+    _mesh.position.y = _desiredPos.y
+    _mesh.position.z = _desiredPos.z
+    return _mesh.position
+}
 export function setMeshesVisibility(_meshesArray, _isVisible){
     _meshesArray.forEach(mesh => mesh.isVisible = _isVisible)
 }
@@ -292,7 +324,6 @@ export function createGizmo(scene, _meshToAttached, isRotationGizmo){
     gizmoManager.rotationGizmoEnabled = isRotationGizmo
     setGizmo(gizmoManager)
 }
-
 
 
 

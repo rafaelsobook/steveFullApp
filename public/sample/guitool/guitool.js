@@ -105,7 +105,7 @@ export function createCheckBox(_label, _ADTexture, _isChecked, _callBWhenValueCh
     // let checkBx = new GUI.Checkbox.AddCheckBoxWithHeader("checkbox: ", _callBWhenValueChanged)
     const checkBx = new GCheckBx("checkbox")
     checkBx.isChecked = _isChecked
-    checkBx.onIsCheckedChangedObservable.add(_callBWhenValueChanged)
+    // checkBx.onIsCheckedChangedObservable.add(_callBWhenValueChanged)
 
     const header = GUI.Checkbox.AddHeader(checkBx, _label, _fontS ? _fontS : "100px", {
         isHorizontal: true, controlFirst: _isBxPositionLeft
@@ -126,6 +126,15 @@ export function createCheckBox(_label, _ADTexture, _isChecked, _callBWhenValueCh
     }
 
     return { checkBx, header }
+}
+export function createGuiImg(imageName, _imgUrl){
+    const image = new BABYLON.GUI.Image(imageName, _imgUrl); // Replace with your image URL
+    image.width = .5
+    image.height = .5
+    // image.width = "200px";  // Width of the image
+    // image.height = "200px"; // Height of the image
+
+    return image        
 }
 
 // VR Related
@@ -174,7 +183,7 @@ export function createButtonForHand(buttonLabel, parentMesh, scene, toCollide, c
                 trigger: BABYLON.ActionManager.OnIntersectionExitTrigger,
                 parameter: toCollide
             }, e => {
-                console.log("OnIntersectionExitTrigger")
+               
                 btn.background = btnBackGroundColor
             }
         ))
