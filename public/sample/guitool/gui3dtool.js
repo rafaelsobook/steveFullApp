@@ -1,3 +1,4 @@
+import { changeGizmo, getGizmo } from "./gizmos.js";
 import { createGuiImg, createTxt } from "./guitool.js";
 import { setMenuScreen } from "./vrui.js";
 
@@ -6,17 +7,38 @@ const log = console.log
 
 let manager; // GUI3DManager
 
-
+// when a mesh is clicked and gizmo is opened it will attach buttons for rotation and position
+let switchToPositionBtn
+let switchToRotationBtn
+let meshDisplayPanel
 export function getGui3DManager(){
     return manager
 }
-
+export function getSwitchBtns(){
+    return { switchToPositionBtn,switchToRotationBtn,meshDisplayPanel }
+}
 export function create3DGuiManager(scene){
     if(manager) {
         log('GUI3Dmanager already created')
         return manager
-    }
+    }else log("Creating GUIManager")
     manager = new GUI.GUI3DManager(scene)
+
+    meshDisplayPanel = createThreeDPanel(manager, 0.1, "normal", {x:0,y:0,z: 0})
+    switchToPositionBtn = createThreeDBtn(meshDisplayPanel, "Move", 50, .3)
+    switchToRotationBtn = createThreeDBtn(meshDisplayPanel, "Rotate", 50, .3)
+    openClosePanel(meshDisplayPanel, false)
+    
+    switchToPositionBtn.onPointerUpObservable.add(() => {
+        changeGizmo(true)
+        log("switching")
+    })
+    switchToRotationBtn.onPointerUpObservable.add(() => {
+        changeGizmo(false, true)
+        log("switching")
+    })
+    
+
     return manager
 }
 

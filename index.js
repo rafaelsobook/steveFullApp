@@ -42,40 +42,47 @@ rooms.set(1, {
     players: [],
     sceneDescription: [
         {
-            _id: "12asdf4",
-            type: "hlsurl",
-            url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
-            pos: {x:4,y:1,z:4},
+            _id: "123",
+            type: "primitive",
+            shape: "box",
+            pos: {x:1.5,y:0,z:2},
+            scale: {x:1,y:2,z:3},
             dir: {x:0,y:0,z:0},
-        }
-//        {
-//            _id: "128383",
-//            type: "remoteurl",
-//            url: "./models/chair.glb",
-//            pos: {x:2,y:1,z:4},
-//            dir: {x:0,y:0,z:0},
-//        },
+        },
+        {
+            _id: "d1231x",
+            type: "primitive",
+            shape: "cylinder",
+            pos: {x:-2,y:0,z:-1},
+            scale: {x:1,y:1,z:1},
+            dir: {x:0,y:0,z:0},
+        },
+       {
+            _id: "128383",
+            type: "remoteurl",
+            url: "./models/sword.glb",
+            pos: {x:2,y:1,z:4},
+            scale: {x:1,y:1,z:1},
+            dir: {x:0,y:0,z:0},
+       },
+    //     {
+    //         _id: "12asdf4",
+    //         type: "hlsurl",
+    //         url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
+    //         pos: {x:4,y:1,z:4},
+    //         scale: {x:5,y:5,z:5},
+    //         dir: {x:0,y:0,z:0},
+    //     }
+
         // {
         //     _id: "1235214",
         //     type: "remoteurl",
         //     url: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb",
         //     pos: {x:1,y:0,z:0},
+        //      scale: {x:1,y:1,z:1},
         //     dir: {x:0,y:0,z:0},
         // },
-        // {
-        //     _id: "123",
-        //     type: "primitive",
-        //     shape: "box",
-        //     pos: {x:1.5,y:0,z:2},
-        //     dir: {x:0,y:0,z:0},
-        // },
-        // {
-        //     _id: "d1231x",
-        //     type: "primitive",
-        //     shape: "cylinder",
-        //     pos: {x:-2,y:0,z:-1},
-        //     dir: {x:0,y:0,z:0},
-        // },
+
     ]
 })
 rooms.set(2, {
@@ -87,6 +94,7 @@ rooms.set(2, {
         type: "remoteurl",
         url: "./models/vwm.glb",
         pos: {x:0,y:2,z:0},
+        scale: {x:1,y:1,z:1},
         dir: {x:0,y:0,z:0},
     }]
 })
@@ -99,6 +107,7 @@ rooms.set(3, {
         //     type: "equipment",
         //     url: "./models/sword.glb",
         //     pos: {x:0,y:1,z:0},
+        //      scale: {x:1,y:1,z:1},
         //     dir: {x:0,y:0,z:0},
         //     isVisible: true,
         //     parentMeshId: false
@@ -180,6 +189,7 @@ io.on("connection", socket => {
         io.to(roomNum).emit("player-joined", {
             newPlayer: data,
             allPlayers: rooms.get(roomNum).players,
+            sceneDescription: rooms.get(roomNum).sceneDescription,
         })
         socket.emit("who-am-i", playerDetail)
         setTimeout(() => {
@@ -191,7 +201,7 @@ io.on("connection", socket => {
     })
     socket.on("create-something", data => {
    
-        const {roomNum, entityType, entityUrl, entityId, _id} = data
+        const {roomNum, entityType, entityUrl, entityId, parentMeshId} = data
         const room = rooms.get(roomNum)
         if(!room) return log('room not found')
         const entity = room.sceneDescription.find(entity => entity._id === entityId)
@@ -203,10 +213,22 @@ io.on("connection", socket => {
             pos: {x:.1,y:0,z:-.06},
             dir: {x:0,y:0,z:0},
             isVisible: true,
-            parentMeshId: _id
+            parentMeshId,
         })
         io.to(roomNum).emit("scene-updated", room.sceneDescription)
     })
+
+    socket.on("moved-object", data => {
+        const room = rooms.get(data.roomNum)
+        if(!room) return log("moving object from invalid room")
+        const objectMoved = room.sceneDescription.find(mesh => mesh._id === data._id)
+        if(!objectMoved) return log("object moved or rotated not found")
+
+        objectMoved.pos = data.pos
+
+        io.to(data.roomNum).emit("moved-object", room.sceneDescription)
+    })
+
     // movements
     let fps = 20
     let spd = .3 / fps

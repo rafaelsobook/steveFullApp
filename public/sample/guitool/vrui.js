@@ -65,8 +65,8 @@ export function createMenuVTwo(scene, _meshParent, _pos){
                 roomNum: myDetail.roomNum, 
                 entityType: "equipment", 
                 entityUrl: "./models/sword.glb", 
-                entityId: "as2394f3", 
-                _id: myDetail._id
+                entityId: Math.random().toLocaleString().split(".")[1], 
+                parentMeshId: myDetail._id
             })
         })
     }

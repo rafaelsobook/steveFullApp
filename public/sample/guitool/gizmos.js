@@ -1,9 +1,64 @@
+import { getMyDetail, getSocket } from "../socket/socketLogic.js";
+import { createThreeDBtn, createThreeDPanel, getGui3DManager } from "./gui3dtool.js";
 const log = console.log
-let gm
 
-export function setGizmo(_gizmoManager){
+
+
+let gm
+let isGizmoOn = false
+let selectedMeshWithGizmo
+
+export function setGizmo(_gizmoManager, scene){
     if(gm !== undefined) return console.log("you already have a gizmo would you like to set 2 gizmos ?")
     gm = _gizmoManager
+    
+    gm.gizmos.positionGizmo.xGizmo.dragBehavior.onDragEndObservable.add( event => {
+        onGizmoMoved(event, "position")
+    });
+    gm.gizmos.positionGizmo.yGizmo.dragBehavior.onDragEndObservable.add( event => {
+        onGizmoMoved(event, "position")
+    });
+    gm.gizmos.positionGizmo.zGizmo.dragBehavior.onDragEndObservable.add( event => {
+        onGizmoMoved(event, "position")
+    });
+
+    changeGizmo()
+    scene.onPointerObservable.add((evt) => {
+        
+        if(evt.type === BABYLON.PointerEventTypes.POINTERDOWN){
+            if(!evt.pickInfo.hit) return
+            console.log(evt.pickInfo)
+            const pickedMesh = evt.pickInfo.pickedMesh
+            if(pickedMesh && gm.attachableMeshes){
+                selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
+                if(!selectedMeshWithGizmo) {
+                    // log(selectedMeshWithGizmo)
+                    changeGizmo()
+                    return
+                }else changeGizmo(true)
+                // openClosePanel(meshDisplayPanel, true)
+                // meshDisplayPanel.linkToTransformNode(pickInfo.pickedMesh)
+                // meshDisplayPanel.position.z -= .5
+            }
+        }
+    })
+    // scene.onPointerDown = e => {
+    //     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity())
+    //     const pickInfo = scene.pickWithRay(ray)
+    //     if(!pickInfo) return
+    //     const pickedMesh = pickInfo.pickedMesh
+    //     if(pickedMesh && gm.attachableMeshes){
+    //         selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
+    //         if(!selectedMeshWithGizmo) {
+    //             // log(selectedMeshWithGizmo)
+    //             changeGizmo()
+    //             return
+    //         }else changeGizmo(true)
+    //         // openClosePanel(meshDisplayPanel, true)
+    //         // meshDisplayPanel.linkToTransformNode(pickInfo.pickedMesh)
+    //         // meshDisplayPanel.position.z -= .5
+    //     }
+    // }
 }
 export function getGizmo(){
     return gm
@@ -12,21 +67,48 @@ export function attachToGizmoArray(mesh){
     if(!gm) return false
     if(gm.attachableMeshes){
         gm.attachableMeshes.push(mesh)
+    }else{
+        gm.attachableMeshes = [mesh]
+        gm.usePointerToAttachGizmos = true
     }
     if(mesh) gm.attachToMesh(mesh)
+    isGizmoOn = true
     return true
 }
 export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo, isScalingGizmo){
-    log("changing gizmo", gm)
+
     if(!gm) return false
     gm.positionGizmoEnabled = isPositionGizmo
     gm.rotationGizmoEnabled = isRotationGizmo
     gm.scaleGizmoEnabled  = isScalingGizmo
     gm.boundingBoxGizmoEnabled   = isBoundingBoxGizmo
+    gm.updateGizmoRotationToMatchAttachedMesh = false
 
-    log(gm.positionGizmoEnabled,
-        gm.rotationGizmoEnabled,
-        gm.scaleGizmoEnabled,
-        gm.boundingBoxGizmoEnabled)
     return true
+}
+
+
+// tools
+function onGizmoMoved(event, type) {
+
+    if (selectedMeshWithGizmo) {
+        log(selectedMeshWithGizmo.id);
+        const socket = getSocket() 
+        const pos = selectedMeshWithGizmo.position
+        const rot = selectedMeshWithGizmo.rotation
+        socket.emit("moved-object", {
+            pos: {x: pos.x,y:pos.y,z:pos.z},
+            rot: {x: rot.x,y:rot.y,z:rot.z},
+            _id: selectedMeshWithGizmo.id,
+            roomNum: getMyDetail().roomNum
+        })
+        // // Get the mesh's transformation values
+        // const position = mesh.position;
+        // const rotation = mesh.rotation;
+        // const scale = mesh.scaling;
+
+        // log(`Position: ${position}`);
+        // log(`Rotation: ${rotation}`);
+        // log(`Scale: ${scale}`);
+    }
 }

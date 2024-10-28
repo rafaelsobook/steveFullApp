@@ -1,4 +1,4 @@
-import { createGizmo, importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
+import {importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
 import { getInitialPlayer } from "../dropdown.js"
 import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
@@ -66,9 +66,10 @@ export function initializeSocket() {
     }
   })
   socket.on("player-joined", data => {
-    const { newPlayer, allPlayers } = data
+    const { newPlayer, allPlayers, sceneDescription } = data
 
-    updateAllPlayers(allPlayers)  
+    updateAllPlayers(allPlayers)
+    updateImportedModels(sceneDescription)
     checkPlayers()
     checkSceneModels()
   })
@@ -89,111 +90,135 @@ export function initializeSocket() {
     // gm.positionGizmoEnabled = true
     // gm.rotationGizmoEnabled  = true
     // gm.usePointerToAttachGizmos = false;
-    
     log("scene updated ")
     sceneDescriptionList.forEach( desc => {
+      // const scale = desc.scale
+      // const pos = desc.pos
 
-      if(desc.type === "equipment"){
-        const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
-        if(modelAlreadyHere) return
-        importedModelsInServer.push(desc)
-        checkSceneModels()
-      }
-      if(desc.type === "hlsurl"){
-        const engine = scene.getEngine()
-        // Create the video element
-        var video = document.createElement("video");
-        video.autoplay = true;
-        video.playsInline = true;
-        video.src = desc.url;
-        video.id = desc._id
+      const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
+      if(modelAlreadyHere) return
+      importedModelsInServer.push(desc)
+      checkSceneModels()
+      // if(desc.type === "equipment"){
+      //   const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
+      //   if(modelAlreadyHere) return
+      //   importedModelsInServer.push(desc)
+      //   checkSceneModels()
+      // }
+      // if(desc.type === "hlsurl"){
+      //   const engine = scene.getEngine()
+      //   // Create the video element
+      //   var video = document.createElement("video");
+      //   video.autoplay = true;
+      //   video.playsInline = true;
+      //   video.src = desc.url;
+      //   video.id = desc._id
         
-        console.log("Adding HTML video element");
-        document.body.appendChild(video);
-        // This is where you create and manipulate meshes
-        var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
-        // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
-        TV.position = new Vector3(desc.pos.x,desc.pos.y, desc.pos.z)
-        TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
-        TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-        TV.actionManager = new BABYLON.ActionManager(scene);
-        if(getGizmo()) {
-          attachToGizmoArray(TV); 
-          changeGizmo(false,false, true)
-        }
+      //   console.log("Adding HTML video element");
+      //   document.body.appendChild(video);
+      //   // This is where you create and manipulate meshes
+      //   var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+      //   // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+      //   TV.position = new Vector3(pos.x,pos.y, pos.z)
+      //   TV.scaling = new Vector3(scale.x, scale.y, scale.z)
+      //   TV.id = desc._id
+      //   attachToGizmoArray(TV)
+      //   TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+      //   TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+      //   TV.actionManager = new BABYLON.ActionManager(scene);
+      //   if(getGizmo()) {
+      //     attachToGizmoArray(TV); 
+      //     // changeGizmo(false,false, true)
+      //   }
     
-        // Video material
-        const videoMat = new BABYLON.StandardMaterial("textVid", scene);
-        var video = document.querySelector('video');
-        video.style.width = "100px"
-        video.preload ="none"
-        var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+      //   // Video material
+      //   const videoMat = new BABYLON.StandardMaterial("textVid", scene);
+      //   var video = document.querySelector('video');
+      //   video.style.width = "100px"
+      //   video.preload ="none"
+      //   var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
 
-        videoMat.backFaceCulling = false;
-        videoMat.diffuseTexture = videoTexture;
-        videoMat.emissiveColor = BABYLON.Color3.White();
-        TV.material = videoMat;
-        var htmlVideo = videoTexture.video;
+      //   videoMat.backFaceCulling = false;
+      //   videoMat.diffuseTexture = videoTexture;
+      //   videoMat.emissiveColor = BABYLON.Color3.White();
+      //   TV.material = videoMat;
+      //   var htmlVideo = videoTexture.video;
 
-        if (Hls.isSupported()) {
-            var hls = new Hls();
-            hls.loadSource(desc.url);
-            hls.attachMedia(video);
-            engine.hideLoadingUI();
-            hls.on(Hls.Events.MANIFEST_PARSED,function() {
-                TV.actionManager.registerAction(
-                    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-                    function(event) {
-                        htmlVideo.play();
-                        changeGizmo(false, false, true)
-                    })
-                );
-            });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = desc.url;
-            engine.hideLoadingUI();
-            video.addEventListener('loadedmetadata',function() {
-                TV.actionManager.registerAction(
-                    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-                    function(event) {
-                        htmlVideo.play();
-                        changeGizmo(false, false, true)
-                    })
-                );
-            });
-        }
-      }    
-      if(desc.type === "primitive"){
-        let model
-        let error=false
-        switch(desc.shape){
-          case "box":
-            model = MeshBuilder.CreateBox(desc.shape, { height: 2 }, scene)
-          break
-          case "cylinder":
-            model = MeshBuilder.CreateCylinder(desc.shape, { diameter: 2 }, scene)
-          break
-          default:
-            log("unsupported shape ", desc)
-            error = true
-          break
-        }
-        if(error) return
-        const pos = desc.pos
-        model.position = new Vector3(pos.x,pos.y,pos.z)
-        // rotation implement here
-      }
-      if(desc.type === "remoteurl"){
-        importCustomModel(desc.url).then( avatar => {        
-          const Root = avatar.meshes[0]
-          const pos = desc.pos
-          Root.position = new Vector3(pos.x, pos.y, pos.z)
-          // importedModelsInServer.push({...desc, body: Root})
-          // lookAr direction here
-        })
-      }
+      //   if (Hls.isSupported()) {
+      //       var hls = new Hls();
+      //       hls.loadSource(desc.url);
+      //       hls.attachMedia(video);
+      //       engine.hideLoadingUI();
+      //       hls.on(Hls.Events.MANIFEST_PARSED,function() {
+      //           TV.actionManager.registerAction(
+      //               new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+      //               function(event) {
+      //                   htmlVideo.play();
+      //                   // changeGizmo(false, false, true)
+      //               })
+      //           );
+      //       });
+      //   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+      //       video.src = desc.url;
+      //       engine.hideLoadingUI();
+      //       video.addEventListener('loadedmetadata',function() {
+      //           TV.actionManager.registerAction(
+      //               new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+      //               function(event) {
+      //                   htmlVideo.play();
+      //                   // changeGizmo(false, false, true)
+      //               })
+      //           );
+      //       });
+      //   }
+      // }    
+      // if(desc.type === "primitive"){
+      //   let model
+      //   let error=false
+      //   switch(desc.shape){
+      //     case "box":
+      //       model = MeshBuilder.CreateBox(desc.shape, { height: 2 }, scene)
+      //     break
+      //     case "cylinder":
+      //       model = MeshBuilder.CreateCylinder(desc.shape, { diameter: 2 }, scene)
+      //     break
+      //     default:
+      //       log("unsupported shape ", desc)
+      //       error = true
+      //     break
+      //   }
+      //   if(error) return
+
+      //   model.position = new Vector3(pos.x,pos.y,pos.z)
+      //   model.scaling = new Vector3(scale.x,scale.y,scale.z)
+      //   model.id = desc._id
+      //   attachToGizmoArray(model)
+      //   // rotation implement here
+      // }
+      // if(desc.type === "remoteurl"){
+      //   log("importing model ")
+      //   importCustomModel(desc.url).then( avatar => {        
+      //     const Root = avatar.meshes[0]
+
+      //     Root.position = new Vector3(pos.x, pos.y, pos.z)
+      //     Root.scaling = new Vector3(scale.x,scale.y,scale.z)
+      //     // attachToGizmoArray(Root)
+      //     Root.id = desc._id
+      //     // importedModelsInServer.push({...desc, body: Root})
+      //     // lookAr direction here
+      //   })
+      // }
     })
 
+  })
+  socket.on("moved-object", sceneDescriptions => {
+    sceneDescriptions.forEach(modelData => {
+      const sceneModel = scene.getMeshById(modelData._id)
+      if(!sceneModel) return log(`model ${modelData._id} not found `)
+      sceneModel.position.x = modelData.pos.x
+      sceneModel.position.y = modelData.pos.y
+      sceneModel.position.z = modelData.pos.z
+    })
   })
   // VR player move hands
   socket.on("player-moved-hands", playersInRoom => {
@@ -369,7 +394,9 @@ function updateAllPlayers(_newPlayers, _newModels) {
   // importedModelsInServer = _newModels
   // log(playersInServer)
 }
-
+function updateImportedModels(_newModels) {
+  importedModelsInServer = _newModels
+}
 export function getMyDetail() {
   return myDetail
 }

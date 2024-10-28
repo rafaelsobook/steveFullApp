@@ -1,4 +1,4 @@
-import { setGizmo } from "./guitool/gizmos.js";
+import { getGizmo, setGizmo } from "./guitool/gizmos.js";
 import { create3DGuiManager, createThreeDBtn, createThreeDPanel } from "./guitool/gui3dtool.js";
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
@@ -135,10 +135,8 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
                 if (nodeName === oldTarget.name) theNode = node
             })
             // log(theNode)
-            if (!theNode) {
-                console.warn("node not found")
-                return oldTarget
-            }
+            if (!theNode) return oldTarget
+            
             return theNode
         })
         instance.animationGroups.push(clonedAnim);
@@ -314,15 +312,21 @@ export function setMeshesVisibility(_meshesArray, _isVisible){
     _meshesArray.forEach(mesh => mesh.isVisible = _isVisible)
 }
 
-export function createGizmo(scene, _meshToAttached, isRotationGizmo){
+export function createGizmo(scene, _meshToAttached, isPositionGizmo,isRotationGizmo, isScaleGizmo, isBoundingGizmo){
     const gizmoManager = new GizmoManager(scene,2);
     gizmoManager.usePointerToAttachGizmos = false;
-    gizmoManager.positionGizmoEnabled = true;
+
     if(_meshToAttached) gizmoManager.attachableMeshes = [_meshToAttached];
     // if(_meshToAttached) gizmoManager.attachToNode(_meshToAttached)
-    gizmoManager.positionGizmoEnabled= isRotationGizmo ? false : true
+    gizmoManager.positionGizmoEnabled= isPositionGizmo
     gizmoManager.rotationGizmoEnabled = isRotationGizmo
-    setGizmo(gizmoManager)
+    gizmoManager.scaleGizmoEnabled  = isScaleGizmo
+    gizmoManager.boundingBoxGizmoEnabled  = isBoundingGizmo
+    setGizmo(gizmoManager, scene)
+    
+
+
+    return gizmoManager
 }
 
 

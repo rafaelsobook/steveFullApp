@@ -1,9 +1,10 @@
-const {Quaternion,Color3, Space, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
+const {Quaternion,Color3, Space,Axis, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { initVrStickControls } from '../controllers/vrcontroller.js'
-import { createMat, createMesh, createPlayer, importCustomModel, importModelContainer, parentAMesh } from '../creations.js'
+import { createGizmo, createMat, createMesh, createPlayer, importCustomModel, importModelContainer, parentAMesh } from '../creations.js'
 import { getSelectedImmMode } from '../dropdown.js'
+import { attachToGizmoArray } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
 import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
 import { createMenuVTwo } from '../guitool/vrui.js'
@@ -48,30 +49,16 @@ export async function createScene(_engine) {
     scene.enablePhysics(new Vector3(0, -9.8, 0), plugin);
 
     bylonUIInit()
-    // const menuScreen = createMenuVTwo(scene, false, {x:0, y:1.5, z:0})
-    // setInterval(() => {
-    //     const myChar = getCharacter()
-    //     if(!myChar) return
-    //     // menuScreen.node.addRotation(0,1,0) works
-    //     const screenPos = menuScreen.position.clone()
-    //     screenPos.y = myChar.mainBody.position.y
-    //     const result = screenPos.subtract(myChar.mainBody.position).normalize()
-    //     const angle = Math.atan2(result.x, result.z)
-    //     menuScreen.node.rotation.y = angle
-    // }, 1000)
-    // createOptScreen(scene, false, {x:-1, y: 2,z:-2})
-
-    // const manager = create3DGuiManager(scene)
-    // const { checkBx, header } = createCheckBox("isVertical ? ", false, false, false, "40px", "40px", "blue")
-    // const samplebtn = createThreeDBtn(manager, "Different", 40, .2, "./images/sword.png")    
-    // samplebtn.position = new Vector3(-1,1.5,4)
-    // const slate = createSlate("Inventory", manager, false, {x: 0, y: 1.8,z:2}, .4)
+    
 
     const swordMat = createMat(scene, "swordMat", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
 
 
     const ground = createGround(scene)
     createRefbx(scene)
+
+    const gm = createGizmo(scene, false, true, false, false, false)
+
 
     await importAnimations("idle_anim.glb")
     await importAnimations("walk_anim.glb") //1
@@ -107,13 +94,19 @@ export async function createScene(_engine) {
     // })
   
     await scene.whenReadyAsync()
-
+    create3DGuiManager(scene)
     setState("GAME")
     checkPlayers() // avatarUrl of everyplayers
+    checkSceneModels()
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)
     await initVrStickControls(scene, xrHelper)
+
+
+    // setInterval(() => {
+    //     checkSceneModels()
+    // }, 1000)
 
     const decimalMaterial = new StandardMaterial('decimal', scene)
     decimalMaterial.diffuseTexture = new Texture('./images/dragon.png', scene)
@@ -123,72 +116,7 @@ export async function createScene(_engine) {
     decimalMaterial.zOffset = -2
 
 
-    // havok sphere
-    // const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
-
-    // sphere.actionManager = new ActionManager(scene)
-    // sphere.actionManager.registerAction(new ExecuteCodeAction(
-    //     ActionManager.OnPickDownTrigger, e => {
-    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), cam)
-    //         const pickInfo = scene.pickWithRay(ray)
-
-    //         const normal = scene.activeCamera?.getForwardRay().direction.negateInPlace().normalize()
-    //         const decal = MeshBuilder.CreateDecal('decal', sphere, {
-    //             position: pickInfo.pickedPoint,
-    //             normal,
-    //             // size: decalSize,
-    //         })
-    //         decal.material = decimalMaterial
-    //     }
-    // ))
-   
-    scene.onPointerObservable.add((e) => {
-        if (e.type === PointerEventTypes.POINTERDOWN) {
-            const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
-            let pickInfo = scene.pickWithRay(ray);
-            
-            // if(pickInfo && pickInfo.pickedPoint){
-            //     const mc = getCharacter()
-            //     if(!mc) return log("no character")
-            //     const point = pickInfo.pickedPoint
-                
-            //     const bonePos = mc.neckNode.getAbsolutePosition()
-            //     var direction = point.subtract(bonePos);
-            //     direction.normalize();
-            //     var targetYaw = Math.atan2(direction.x, direction.z);
-            //     mc.neckNode.rotate(BABYLON.Axis.Y, targetYaw);
-            //     log(mc.neckNode.rotationQuaternion)
-            //     mc.skeleton.prepare()
-            //     // var diffX = point.x - mc.mainBody.position.x;
-            //     // var diffY = point.z - mc.mainBody.position.z;
-            //     // const angle = Math.atan2(diffX, diffY)
-            //     // log(mc.skeleton)
-            //     // mc.skeleton.bones.forEach(bone => {
-            //     //     if(bone.name.includes("Neck")){
-            //     //         var rotQ = new Quaternion.RotationYawPitchRoll(0, angle, 0);
-            //     //         bone.setRotationQuaternion(rotQ, Space.WORLD)
-            //     //         log(bone.rotationQuaternion)
-            //     //     }
-            //     // })
-            // }
-            // const clickedMeshName = pickInfo.pickedMesh.name.toLowerCase()
-            // const clickedPos = pickInfo.pickedMesh.getAbsolutePosition()
-            // const myDetail = getMyDetail()
-            // const myMesh = scene.getMeshByName(`player.${myDetail._id}`)
-            // if(!myMesh) return log('cannot find my mesh')
-            // const currentPos = myMesh.position
-            // log('will move')
-            // emitMove({
-            //     _id: myDetail._id, 
-            //     movementName: "clickedTarget",
-            //     loc: {x: currentPos.x, y: currentPos.y,z: currentPos.z}, 
-            //     direction: {x: clickedPos.x, y: currentPos.y, z: clickedPos.z} 
-            // })
-        }
-    });
-
-    scene.registerBeforeRender(() => {
-        
+    scene.registerBeforeRender(() => {      
         const deltaT = _engine.getDeltaTime() / 1000
         players.forEach(pl => {            
             if (pl._moving) {
@@ -256,7 +184,6 @@ export async function createScene(_engine) {
 }
 
 function importAnimations(animationGLB, _scene) {
-
     return SceneLoader.ImportMeshAsync(null, "./models/" + animationGLB, null, _scene)
         .then((result) => {
             result.meshes.forEach(element => {
@@ -364,36 +291,152 @@ export function checkPlayers() {
         totalPlayers.forEach(pl => {
             const playerInScene = players.some(plscene => plscene._id === pl._id)
             if (playerInScene) return log('player is already in scene')
-            createPlayer(pl, animationsGLB, scene, vrHands).then(newP => players.push(newP))            
+            createPlayer(pl, animationsGLB, scene, vrHands).then(newP => {
+                players.push(newP)
+                checkSceneModels()
+            })            
         })
     }
 }
 export function checkSceneModels(){
     const state = getState()
+    const scene = getScene()
+    if(!scene) return log("scene not ready")
     if (state !== "GAME") return log('Game is still not ready')
-    const modelsFromSocket = getAllImportedModelsInSocket()
-    if (modelsFromSocket.length) {
-        modelsFromSocket.forEach(socketModel => {
-            const modelAlreadyHere = modelsInScene.some(sceneModel => sceneModel._id === socketModel._id)
+    const sceneDescription = getAllImportedModelsInSocket()
+    if (sceneDescription.length) {
+        sceneDescription.forEach(socketModel => {
+            const {pos,scale, _id} = socketModel
+            const modelAlreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
             if (modelAlreadyHere) {
                 
                 if(socketModel.parentMeshId){
                     const mesh = modelAlreadyHere.mesh
                     const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
-                    if(parentPlayer) parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})                      
+                    if(parentPlayer) {
+                        parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
+                    }
                 }
                 return log('model is already in scene ')
             }else{
-                importCustomModel(socketModel.url).then( model => {        
-                    const Root = model.meshes[0]
-                    model.meshes[1].material = scene.getMaterialByName("swordMat")
-               
-                    if(socketModel.parentMeshId){
-                      const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
-                      if(parentPlayer) parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})                      
+                if(socketModel.type === "hlsurl"){
+                    // Create the video element
+                    var video = document.createElement("video");
+                    video.autoplay = true;
+                    video.playsInline = true;
+                    video.src = desc.url;
+                    video.id = desc._id
+                    
+                    console.log("Adding HTML video element");
+                    document.body.appendChild(video);
+                    // This is where you create and manipulate meshes
+                    var TV = MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+                    // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+                    TV.position = new Vector3(pos.x,pos.y, pos.z)
+                    TV.scaling = new Vector3(scale.x, scale.y, scale.z)
+                    TV.id = desc._id
+                    attachToGizmoArray(TV)
+                    TV.rotate(Axis.Z, Math.PI, Space.WORLD);
+                    TV.rotate(Axis.Y, Math.PI, Space.WORLD);
+                    TV.actionManager = new ActionManager(scene);
+                    if(getGizmo()) {
+                        attachToGizmoArray(TV); 
+                        // changeGizmo(false,false, true)
                     }
-                    modelsInScene.push({...socketModel, mesh: Root})
-                })
+                
+                    // Video material
+                    const videoMat = new BABYLON.StandardMaterial("textVid", scene);
+                    var video = document.querySelector('video');
+                    video.style.width = "100px"
+                    video.preload ="none"
+                    var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+            
+                    videoMat.backFaceCulling = false;
+                    videoMat.diffuseTexture = videoTexture;
+                    videoMat.emissiveColor = BABYLON.Color3.White();
+                    TV.material = videoMat;
+                    var htmlVideo = videoTexture.video;
+            
+                    if (Hls.isSupported()) {
+                        var hls = new Hls();
+                        hls.loadSource(desc.url);
+                        hls.attachMedia(video);
+                        
+                        hls.on(Hls.Events.MANIFEST_PARSED,function() {
+                            TV.actionManager.registerAction(
+                                new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+                                function(event) {
+                                    htmlVideo.play();
+                                    // changeGizmo(false, false, true)
+                                })
+                            );
+                        });
+                    } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
+                        video.src = desc.url;
+                        
+                        video.addEventListener('loadedmetadata',function() {
+                            TV.actionManager.registerAction(
+                                new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+                                function(event) {
+                                    htmlVideo.play();
+                                    // changeGizmo(false, false, true)
+                                })
+                            );
+                        });
+                    }
+                    modelsInScene.push({...socketModel, mesh: TV})
+                }    
+                if(socketModel.type === "primitive"){
+                    let model
+                    let error=false
+                    switch(socketModel.shape){
+                        case "box":
+                        model = MeshBuilder.CreateBox(socketModel.shape, { height: 2 }, scene)
+                        break
+                        case "cylinder":
+                        model = MeshBuilder.CreateCylinder(socketModel.shape, { diameter: 2 }, scene)
+                        break
+                        default:
+                        log("unsupported shape ", socketModel)
+                        error = true
+                        break
+                    }
+                    if(error) return
+            
+                    model.position = new Vector3(pos.x,pos.y,pos.z)
+                    model.scaling = new Vector3(scale.x,scale.y,scale.z)
+                    model.id = _id
+    
+                    attachToGizmoArray(model)
+                    modelsInScene.push({...socketModel, mesh: model})
+                // rotation implement here
+                }
+                if(socketModel.type === "remoteurl"){
+                    log("importing model ")
+                    importCustomModel(socketModel.url).then( avatar => {        
+                        const Root = avatar.meshes[0]
+            
+                        Root.position = new Vector3(pos.x, pos.y, pos.z)
+                        Root.scaling = new Vector3(scale.x,scale.y,scale.z)
+                        // attachToGizmoArray(Root)
+                        Root.id = socketModel._id
+                        modelsInScene.push({...socketModel, mesh: Root})
+                        // lookAr direction here
+                    })
+                }
+                if(socketModel.type === "equipment"){
+                    importCustomModel(socketModel.url).then( model => {        
+                        const Root = model.meshes[0]
+                        model.meshes[1].material = scene.getMaterialByName("swordMat")
+                   
+                        if(socketModel.parentMeshId){
+                          const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
+                          if(parentPlayer) parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})                      
+                        }
+                        modelsInScene.push({...socketModel, mesh: Root})
+                    }).catch(error => log(error))
+                }
+                
             }
         })
     }
@@ -440,15 +483,15 @@ function createGround(scene){
 
     return ground
 }
-function createRefbx(scene){
-    const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
-    const head = MeshBuilder.CreateBox("refbx", {size: .66}, scene)
-    head.parent = refbx
-    head.position = new Vector3(0,.9,.3)
-    refbx.isVisible = false
-    head.isVisible = false
-    refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
-}
+        function createRefbx(scene){
+            const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
+            const head = MeshBuilder.CreateBox("refbx", {size: .66}, scene)
+            head.parent = refbx
+            head.position = new Vector3(0,.9,.3)
+            refbx.isVisible = false
+            head.isVisible = false
+            refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
+        }
 
 function createHandMat(scene, isLight){
     var handMat = new StandardMaterial("handMat", scene);
@@ -468,7 +511,24 @@ function createHandMat(scene, isLight){
 
 
 
+// const menuScreen = createMenuVTwo(scene, false, {x:0, y:1.5, z:0})
+    // setInterval(() => {
+    //     const myChar = getCharacter()
+    //     if(!myChar) return
+    //     // menuScreen.node.addRotation(0,1,0) works
+    //     const screenPos = menuScreen.position.clone()
+    //     screenPos.y = myChar.mainBody.position.y
+    //     const result = screenPos.subtract(myChar.mainBody.position).normalize()
+    //     const angle = Math.atan2(result.x, result.z)
+    //     menuScreen.node.rotation.y = angle
+    // }, 1000)
+    // createOptScreen(scene, false, {x:-1, y: 2,z:-2})
 
+    // const manager = create3DGuiManager(scene)
+    // const { checkBx, header } = createCheckBox("isVertical ? ", false, false, false, "40px", "40px", "blue")
+    // const samplebtn = createThreeDBtn(manager, "Different", 40, .2, "./images/sword.png")    
+    // samplebtn.position = new Vector3(-1,1.5,4)
+    // const slate = createSlate("Inventory", manager, false, {x: 0, y: 1.8,z:2}, .4)
 
     // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
     // skybox.infiniteDistance = true;
@@ -485,3 +545,72 @@ function createHandMat(scene, isLight){
     // skybox.material = skyMaterial;
 
     // AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)
+
+
+
+    // scene.onPointerObservable.add((e) => {
+    //     if (e.type === PointerEventTypes.POINTERDOWN) {
+    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
+    //         let pickInfo = scene.pickWithRay(ray);
+    //         if(pickInfo){
+    //             log(pickInfo.pickedMesh.name)
+    //         }
+    //         // if(pickInfo && pickInfo.pickedPoint){
+    //         //     const mc = getCharacter()
+    //         //     if(!mc) return log("no character")
+    //         //     const point = pickInfo.pickedPoint
+                
+    //         //     const bonePos = mc.neckNode.getAbsolutePosition()
+    //         //     var direction = point.subtract(bonePos);
+    //         //     direction.normalize();
+    //         //     var targetYaw = Math.atan2(direction.x, direction.z);
+    //         //     mc.neckNode.rotate(BABYLON.Axis.Y, targetYaw);
+    //         //     log(mc.neckNode.rotationQuaternion)
+    //         //     mc.skeleton.prepare()
+    //         //     // var diffX = point.x - mc.mainBody.position.x;
+    //         //     // var diffY = point.z - mc.mainBody.position.z;
+    //         //     // const angle = Math.atan2(diffX, diffY)
+    //         //     // log(mc.skeleton)
+    //         //     // mc.skeleton.bones.forEach(bone => {
+    //         //     //     if(bone.name.includes("Neck")){
+    //         //     //         var rotQ = new Quaternion.RotationYawPitchRoll(0, angle, 0);
+    //         //     //         bone.setRotationQuaternion(rotQ, Space.WORLD)
+    //         //     //         log(bone.rotationQuaternion)
+    //         //     //     }
+    //         //     // })
+    //         // }
+    //         // const clickedMeshName = pickInfo.pickedMesh.name.toLowerCase()
+    //         // const clickedPos = pickInfo.pickedMesh.getAbsolutePosition()
+    //         // const myDetail = getMyDetail()
+    //         // const myMesh = scene.getMeshByName(`player.${myDetail._id}`)
+    //         // if(!myMesh) return log('cannot find my mesh')
+    //         // const currentPos = myMesh.position
+    //         // log('will move')
+    //         // emitMove({
+    //         //     _id: myDetail._id, 
+    //         //     movementName: "clickedTarget",
+    //         //     loc: {x: currentPos.x, y: currentPos.y,z: currentPos.z}, 
+    //         //     direction: {x: clickedPos.x, y: currentPos.y, z: clickedPos.z} 
+    //         // })
+    //     }
+    // });
+
+    
+    // havok sphere
+    // const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
+
+    // sphere.actionManager = new ActionManager(scene)
+    // sphere.actionManager.registerAction(new ExecuteCodeAction(
+    //     ActionManager.OnPickDownTrigger, e => {
+    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), cam)
+    //         const pickInfo = scene.pickWithRay(ray)
+
+    //         const normal = scene.activeCamera?.getForwardRay().direction.negateInPlace().normalize()
+    //         const decal = MeshBuilder.CreateDecal('decal', sphere, {
+    //             position: pickInfo.pickedPoint,
+    //             normal,
+    //             // size: decalSize,
+    //         })
+    //         decal.material = decimalMaterial
+    //     }
+    // ))
