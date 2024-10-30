@@ -1,3 +1,5 @@
+import { randomNumToStr } from "./creations.js";
+
 // Get the dropdown button and content
 const dropdownBtn = document.getElementById("dropdownBtn");
 const dropdownContent = document.getElementById("dropdownContent");
@@ -6,6 +8,9 @@ const dropdownImmMode = document.getElementById("dropdownImmMode");
 const dropdownImmModeContent = document.getElementById("dropdownImmModeContent");
 
 let dropDownInitiated = false
+
+// we have two dropdown element because we have two buttons and two dropdwon element can be displayed in the view at the same time
+// list of available character options on the dropdown menu // this is the list we will see once select avatar btn is pressed
 let availableAvatars = [
     {
         avatarName: "rafael",
@@ -36,21 +41,27 @@ let availableAvatars = [
 //        avatarUrl: "./models/sehu.glb"
 //    }
 ]
-let selectedAvatar = undefined
-
+// list of available immersive option on the dropdown menu // this is the list we will see once select immersive option btn is pressed
 let availableImmMode = [
-    "immersive-vr",
-    "immersive-ar"
+    "Immersive VR",
+    "Immersive AR"
 ]
 
-let selectedImmMode = "immersive-vr"
+let selectedAvatar = {...availableAvatars[2], name: `name${randomNumToStr()}`} // steve purple by default
+let selectedImmMode = "Immersive VR" // immersive vr by default
 
-export function getSelectedImmMode(){
-    return selectedImmMode
-}
+updateButtonsInnerHTML()// only for updating Buttons innerHTML UI nothing else
+
+
+// this function will be used in sockets, we will call this function in the socketLogic to inform the server about our selected avatar, so when it returns to the client it will create the 3d model that we select from the start by default it is set to steve purple
 export function getInitialPlayer(){
     return selectedAvatar
 }
+// this function will be used when you go immersive it will then go VR or AR according to what you have chosen, default is immersive VR
+export function getSelectedImmMode(){
+    return selectedImmMode
+}
+
 export function initDropDown(){
     if(dropDownInitiated) return
 
@@ -59,7 +70,7 @@ export function initDropDown(){
         dropdownContent.classList.toggle("show");
     });
     dropdownContent.innerHTML =''
-
+    
     dropdownImmMode.addEventListener("click", function() {
         dropdownImmModeContent.classList.toggle("show");
     });
@@ -82,14 +93,14 @@ export function initDropDown(){
         const parentClassName = event.target.parentElement.className
         if(!parentClassName) return
         if(parentClassName.includes("character-opt")){
-           
             const avatarName = event.target.innerHTML
             if(!avatarName) return 
             const avatar = availableAvatars.find(avatar => avatar.avatarName === avatarName)
             if(!avatar) return
-
-            avatarSelected(avatar)
+            selectedAvatar = avatar
         }
+        if (parentClassName.includes("immersive-opt")) selectedImmMode = event.target.innerHTML
+        
         if (!event.target.matches('.dropdown-btn')) {
             if (dropdownContent.classList.contains("show")) {
                 dropdownContent.classList.remove("show");
@@ -98,24 +109,15 @@ export function initDropDown(){
                 dropdownImmModeContent.classList.remove("show");
             }
         }
-        if (parentClassName.includes("immersive-opt")) {
-            // if (dropdownImmMode.classList.contains("show")) {
-            //     dropdownImmMode.classList.remove("show");
-            // }
-            const modeName = event.target.innerHTML
-            selectedImmMode = modeName
-            dropdownImmMode.innerHTML = modeName
-        }
+
+        // updating the buttons innerHTML value according to chosen avatar or immersive option
+        updateButtonsInnerHTML()
     };
-    avatarSelected(availableAvatars[1])
-
-    // selection immersive mode
-
 }
 
-function avatarSelected(avatarDet){
-    selectedAvatar = {...avatarDet, name: `samplename${Math.random().toLocaleString().split(".")[1]}` }
+
+// only for updating Buttons innerHTML UI nothing else
+function updateButtonsInnerHTML(){
     dropdownBtn.innerHTML = selectedAvatar.avatarName
+    dropdownImmMode.innerHTML = selectedImmMode
 }
-
-

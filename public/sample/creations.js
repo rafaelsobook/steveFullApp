@@ -324,12 +324,12 @@ export function createGizmo(scene, _meshToAttached, isPositionGizmo,isRotationGi
     gizmoManager.boundingBoxGizmoEnabled  = isBoundingGizmo
     setGizmo(gizmoManager, scene)
     
-
-
     return gizmoManager
 }
 
-
+export function randomNumToStr(){
+    return Math.random().toLocaleString().split(".")[1]
+}
 
 // export function createTextButton(buttonLabel, parentMesh, scene, toCollide){
 //     const {Mesh, GUI} = BABYLON

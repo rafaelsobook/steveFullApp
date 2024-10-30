@@ -5,7 +5,6 @@ const log = console.log
 
 
 let gm
-let isGizmoOn = false
 let selectedMeshWithGizmo
 
 export function setGizmo(_gizmoManager, scene){
@@ -72,7 +71,7 @@ export function attachToGizmoArray(mesh){
         gm.usePointerToAttachGizmos = true
     }
     if(mesh) gm.attachToMesh(mesh)
-    isGizmoOn = true
+
     return true
 }
 export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo, isScalingGizmo){
