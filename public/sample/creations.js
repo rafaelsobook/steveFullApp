@@ -1,16 +1,24 @@
 import { getGizmo, setGizmo } from "./guitool/gizmos.js";
 import { create3DGuiManager, createThreeDBtn, createThreeDPanel } from "./guitool/gui3dtool.js";
+import { createAggregate } from "./physics/aggregates.js";
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
-const {Quaternion,StandardMaterial,Texture,Color3,Matrix,Mesh, Space, Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader,PhysicsAggregate ,PhysicsShapeType } = BABYLON
+const {Quaternion,StandardMaterial,Texture,Color3,Matrix,Mesh, Space, ActionManager,
+PhysicsRaycastResult,
+Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoader } = BABYLON
 const log = console.log
 
 
 
-export async function importCustomModel(_avatarUrl){
+export async function importCustomModel(_avatarUrl, removeParent){
     const scene = getScene()
-    return await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
+    const Model = await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
+    if(removeParent){
+        Model.meshes[1].parent = null
+        Model.meshes[0].dispose()
+        return Model.meshes[1]
+    } else return Model
 }
 
 export async function importModelContainer(scene, glbName) {
@@ -18,7 +26,8 @@ export async function importModelContainer(scene, glbName) {
 }
 
 export async function createPlayer(detail, animationsGLB, scene, vrHands) {
-  
+    const footRayCast = new PhysicsRaycastResult()
+
     const { loc, dir, _id, name, _moving, movement, currentSpd, avatarUrl, wristPos, wristQuat } = detail
     
     const ikCtrls = []
@@ -34,12 +43,6 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     const lHandBones = leftInstance.skeletons[0].bones
     rHandMesh.isVisible = detail.vrHandsVisible 
     lHandMesh.isVisible = detail.vrHandsVisible 
-    // setInterval(() => {
-    //     rHand.position.x += .5
-    //     const thumbTip = rHandBones.find(bne => bne.name === "right-handJoint-0")
-    //     log("posX: ", thumbTip.getTransformNode().position.x, 'absX: ', thumbTip.getTransformNode().getAbsolutePosition().x)
-    // }, 500)
-    
 
     const instance = await importCustomModel(avatarUrl)
     // const root = instance.rootNodes[0]
@@ -50,63 +53,24 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     const skeleton = instance.skeletons[0]
 
     let neckNode
-
+    let headBone
     let targetPoint
     skeleton.bones.forEach(bone => {
-        // log(bone.name)
-        if(bone.name.toLowerCase().includes("neck")){
+        const boneName = bone.name.toLowerCase()
+ 
+        if(boneName === "head") headBone = bone.getTransformNode()
+        if(boneName.includes("neck")){
             // const boneNode = bone.getTransformNode()
             neckNode = skeleton.bones[bone.getIndex()+1].getTransformNode()
-            // const boneSceneNode = scene.getTransformNodeByName(bone.name)
-            
-            // log(boneNode)
-            // log(boneSceneNode)
-
-            // createGizmo(scene, boneSceneNode, true)
-            let rotY = 0
-            // setInterval(() => {
-            //     log(`bone rotY: ${boneNode.rotationQuaternion}`)
-               
-            //     // boneNode.position.z += 1
-            // }, 500)
-            // const targetQuat = Quaternion.FromEulerVector(new Vector3(3,2,2)).normalize()
-            // boneNode.lookAt(new Vector3(1,40,1), 0,0,0, BABYLON.Space.WORLD)
-            
-            // const refBox = MeshBuilder.CreateBox("refBox", {}, scene)
-            // createGizmo(scene, refBox)
-            
-            // neckNode.rotationQuaternion = Quaternion.Zero() //Quaternion.FromEulerVector(refBox.rotation)
-            // scene.registerBeforeRender(() =>{
-            //     const camDir = scene.activeCamera.getForwardRay().direction
-
-            //     neckNode.lookAt(refBox.position, Math.PI,Math.PI - Math.PI/8,0, Space.WORLD)
-
-
-            //     // const lookAt = Matrix.LookAtLH(
-            //     //     mainBody.position,
-            //     //     new Vector3(0,5,0),
-            //     //     Vector3.Up()
-            //     // ).invert();
-            //     // neckNode.rotationQuaternion = Quaternion.FromRotationMatrix( lookAt );
-
-            //     // boneNode.rotate(BABYLON.Axis.Y, rotY, BABYLON.Space.WORLD, root)
-            //     // neckNode.rotationQuaternion = Quaternion.FromEulerVector(refBox.rotation)
-            //     // rotY+= Math.PI/60
-                
-            //     // if(targetPoint)neckNode.lookAt(targetPoint, Math.PI,0,0)
-            // })
         }
     })
-    const mainBody = MeshBuilder.CreateBox(`player.${_id}`, { height: 2 }, scene)
-    // const aggregatePlayer = new PhysicsAggregate(mainBody, PhysicsShapeType.BOX, { mass: 1, friction: 0.5, restitution: 0 }, scene)
-    // aggregatePlayer.body.setMotionType(PhysicsMotionType.DYNAMIC);
-    // aggregatePlayer.body.disablePreStep = false;
-    // aggregatePlayer.body.setMassProperties({
-    //     inertia: new Vector3(0, 0, 0),
-    // });
-    // aggregatePlayer.body.setCollisionCallbackEnabled(true);
+    
+    const mainBody = createShape({ height: 2, capSubdivisions: 1}, {x: loc.x, y: loc.y+1, z: loc.z}, `player.${_id}`, "capsule")
+    const playerAgg = createAggregate(mainBody, {mass: .1}, "capsule")
+    playerAgg.body.setMassProperties({inertia: new Vector3(0,0,0)})
+    playerAgg.body.disablePreStep = false
+    playerAgg.body.setLinearDamping(10)
 
-    mainBody.position = new Vector3(loc.x, 1, loc.z)
     mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
     mainBody.isVisible = false
     mainBody.visibility = .3
@@ -117,8 +81,7 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     if (getMyDetail()._id === _id) {
         scene.activeCamera.setTarget(mainBody)
         scene.activeCamera.alpha = -Math.PI / 2
-        scene.activeCamera.beta = 1
-    
+        scene.activeCamera.beta = 1    
         // panel.linkToTransformNode(mainBody)
     }
 
@@ -143,81 +106,12 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     })
     instance.animationGroups[0].play(true)
 
-    // implementing IK Controller For VR
-    const bonesSelection = 
-    [
-        {name:'LeftHand' },
-        {name:'RightHand' },
-    ];
-    let leftHandControl
-    let rightHandControl    
-    bonesSelection.forEach(elem => {        
-        // Finding Bone
-        const bone = skeleton.bones.find(bone => bone.name.includes(elem.name));
-
-        // leftHandControl.parent = avatar
-
-        // leftHandControl.rotationQuaternion = null
-        // bone.getPositionToRef(BABYLON.Space.WORLD, avatar, leftHandControl.position);
-        // leftHandControl.parent = avatar
-
-        // let handikCtrl = new BoneIKController(
-        //     avatar,
-        //     targetBone,
-        //     {
-                
-        //         poleAngle: 0,
-        //         targetMesh: control
-        //     }
-        // );
-        // // log(skeleton.bones[bone.getIndex()-1].name)
-        // // log(bone.name)
-        // ikCtrls.push(handikCtrl);
-        // handikCtrl.update()
-        // handikCtrl.maxAngle = Math.PI * .9
-
-        // bone.getPositionToRef(BABYLON.Space.WORLD, avatar, leftHandControl.position);
-    });
-
-    // to view skeleton
-    // const viewer = new Debug.SkeletonViewer(skeleton, avatar, scene, false, 1, { 
-    //     displayMode: Debug.SkeletonViewer.DISPLAY_SPHERE_AND_SPURS
-    // });
-    // viewer.isEnabled = true;
-
-    // scene.registerBeforeRender( () => {
-    //     if (ikCtrls.length > 0) {
-    //         ikCtrls.forEach(ctrl => ctrl.update());
-    //     }
-    // });
-
-    // scene.onPointerDown = () => {
-    //     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity(), scene.activeCamera)
-    //     const pickInfo = scene.pickWithRay(ray)
-
-    //     if(pickInfo.hit){
-    //         targetPoint = pickInfo.pickedPoint;
-    //         log(targetPoint)
-
-    //         neckNode.lookAt(targetPoint, 0,0,0)
-    //     }
-        
-    // }
-
-    // leftHandControl.rotationQuaternion = Quaternion.Identity()
-    // rightHandControl.rotationQuaternion = Quaternion.Identity()
-    if(!wristPos && !wristQuat) {
-        // leftHandControl.isVisible = false
-        // rightHandControl.isVisible = false
-    }
-
-
-
     return {
         _id,
         dir,
         headDirection: false, //{x:0,y:2,z:0},
         mainBody,
+        playerAgg,
         root,
         anims: instance.animationGroups,
         instance,
@@ -231,15 +125,16 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         weightInterval: undefined,
         skeleton,
 
-        leftHandControl,
-        rightHandControl,
         rHand,
         lHand,
         rHandMesh,
         lHandMesh,
         rHandBones,
         lHandBones,
-        neckNode
+        neckNode,
+        headBone,
+
+        footRayCast,
     }
 }
 export async function createAvatar_Old(glbName, pos, direction, animationsGLB) {
@@ -265,20 +160,28 @@ export async function createAvatar_Old(glbName, pos, direction, animationsGLB) {
 }
 
 // ordinary mesh
-export function createMesh(scene, pos, meshShape){
-    let mesh
-    switch(meshShape){
+
+export function createShape(opt, pos, name, meshType, _enableActionManager){
+    let mesh 
+    let meshName = name ? name : "shape"
+    switch(meshType){
         case "sphere":
-            mesh = new MeshBuilder.CreateSphere('sphere', {}, scene)
-            mesh.position = new Vector3(pos.x,pos.y,pos.z) 
-            new PhysicsAggregate(mesh, PhysicsShapeType.SPHERE, { mass: .5, friction: 0.01, restitution: .1}, scene)
+            mesh = MeshBuilder.CreateSphere(meshName, opt)
+        break
+        case "capsule":
+            mesh = MeshBuilder.CreateCapsule(meshName, opt)
+            // mesh = MeshBuilder.CreateCapsule("asd", { height: 1, tessellation: 16, radius: 0.25})
+        break
+        case "ground":
+            mesh = MeshBuilder.CreateGround(meshName, opt)
         break
         default:
-            mesh = new MeshBuilder.CreateBox('box', {}, scene)
-            mesh.position = new Vector3(pos.x,pos.y,pos.z) 
-            new PhysicsAggregate(mesh, PhysicsShapeType.BOX, { mass: .5, friction: 0.01, restitution: .1}, scene)
+            mesh = MeshBuilder.CreateBox(meshName, opt)
         break
     }
+    mesh.checkCollisions = true
+    if(pos) mesh.position = new Vector3(pos.x,pos.y,pos.z)
+    if(_enableActionManager) mesh.actionManager = new ActionManager(getScene())
     return mesh
 }
 
@@ -300,7 +203,6 @@ export function parentAMesh(_childMesh, _parentMesh, _chldPos, _chldScaleXYZUnit
     _childMesh.scaling = new Vector3(_chldScaleXYZUnit,_chldScaleXYZUnit,_chldScaleXYZUnit)
     _childMesh.position = new Vector3(_chldPos.x, _chldPos.y,_chldPos.z)
     _childMesh.rotationQuaternion = new Quaternion(_chldRotQuat.x,_chldRotQuat.y,_chldRotQuat.z,_chldRotQuat.w)
-    log("success parenting mesh")
 }
 export function setMeshPos(_mesh, _desiredPos){
     _mesh.position.x = _desiredPos.x
@@ -330,6 +232,23 @@ export function createGizmo(scene, _meshToAttached, isPositionGizmo,isRotationGi
 export function randomNumToStr(){
     return Math.random().toLocaleString().split(".")[1]
 }
+// deprecated
+// export function createMesh(scene, pos, meshShape){
+//     let mesh
+//     switch(meshShape){
+//         case "sphere":
+//             mesh = new MeshBuilder.CreateSphere('sphere', {}, scene)
+//             mesh.position = new Vector3(pos.x,pos.y,pos.z) 
+//             new PhysicsAggregate(mesh, PhysicsShapeType.SPHERE, { mass: .5, friction: 0.01, restitution: .1}, scene)
+//         break
+//         default:
+//             mesh = new MeshBuilder.CreateBox('box', {}, scene)
+//             mesh.position = new Vector3(pos.x,pos.y,pos.z) 
+//             new PhysicsAggregate(mesh, PhysicsShapeType.BOX, { mass: .5, friction: 0.01, restitution: .1}, scene)
+//         break
+//     }
+//     return mesh
+// }
 
 // export function createTextButton(buttonLabel, parentMesh, scene, toCollide){
 //     const {Mesh, GUI} = BABYLON

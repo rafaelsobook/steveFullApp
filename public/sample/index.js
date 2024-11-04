@@ -28,9 +28,9 @@ export async function main() {
 }
 
 export function getCharacter() {
-  if(!getScene()) return
+  if(!getScene()) return false
   let myDetail = getMyDetail()
-  if(!myDetail) return 
+  if(!myDetail) return false
   let myCharacterInScene = getPlayersInScene().find(plScene => plScene._id === myDetail._id)
   if (!myCharacterInScene) return false
   return myCharacterInScene

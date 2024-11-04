@@ -5,5 +5,7 @@ function generateUUID() {
         return v.toString(16);
     });
 }
-
-module.exports = { generateUUID }
+function createRandomID(){
+    return Math.random().toLocaleString().split(".")[1] //
+}
+module.exports = { generateUUID, createRandomID }

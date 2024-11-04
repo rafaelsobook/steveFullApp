@@ -26,38 +26,15 @@ export function setGizmo(_gizmoManager, scene){
         
         if(evt.type === BABYLON.PointerEventTypes.POINTERDOWN){
             if(!evt.pickInfo.hit) return
-            console.log(evt.pickInfo)
             const pickedMesh = evt.pickInfo.pickedMesh
             if(pickedMesh && gm.attachableMeshes){
                 selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
-                if(!selectedMeshWithGizmo) {
-                    // log(selectedMeshWithGizmo)
-                    changeGizmo()
-                    return
-                }else changeGizmo(true)
-                // openClosePanel(meshDisplayPanel, true)
-                // meshDisplayPanel.linkToTransformNode(pickInfo.pickedMesh)
-                // meshDisplayPanel.position.z -= .5
+                if(!selectedMeshWithGizmo) changeGizmo(false) // hide gizmo if the mesh has no gizmo attached
+                    
+                changeGizmo(true)                
             }
         }
     })
-    // scene.onPointerDown = e => {
-    //     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, BABYLON.Matrix.Identity())
-    //     const pickInfo = scene.pickWithRay(ray)
-    //     if(!pickInfo) return
-    //     const pickedMesh = pickInfo.pickedMesh
-    //     if(pickedMesh && gm.attachableMeshes){
-    //         selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
-    //         if(!selectedMeshWithGizmo) {
-    //             // log(selectedMeshWithGizmo)
-    //             changeGizmo()
-    //             return
-    //         }else changeGizmo(true)
-    //         // openClosePanel(meshDisplayPanel, true)
-    //         // meshDisplayPanel.linkToTransformNode(pickInfo.pickedMesh)
-    //         // meshDisplayPanel.position.z -= .5
-    //     }
-    // }
 }
 export function getGizmo(){
     return gm
@@ -91,7 +68,7 @@ export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo,
 function onGizmoMoved(event, type) {
 
     if (selectedMeshWithGizmo) {
-        log(selectedMeshWithGizmo.id);
+        // log(selectedMeshWithGizmo.id);
         const socket = getSocket() 
         const pos = selectedMeshWithGizmo.position
         const rot = selectedMeshWithGizmo.rotation

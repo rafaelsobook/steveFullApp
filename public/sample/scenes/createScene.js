@@ -1,14 +1,15 @@
 const {Quaternion,Color3, Space,Axis, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
 import { initJoyStick } from '../controllers/thumbController.js'
-import { initVrStickControls } from '../controllers/vrcontroller.js'
-import { createGizmo, createMat, createMesh, createPlayer, importCustomModel, importModelContainer, parentAMesh } from '../creations.js'
+import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
+import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility } from '../creations.js'
 import { getSelectedImmMode } from '../dropdown.js'
 import { attachToGizmoArray } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
 import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
 import { createMenuVTwo } from '../guitool/vrui.js'
 import { getCharacter, getState, setState } from '../index.js'
+import { createAggregate } from '../physics/aggregates.js'
 import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 
 const log = console.log
@@ -22,7 +23,7 @@ let players = []
 let modelsInScene = []
 
 // necessities to create player
-// let scene
+let scene
 let AvatarRoot
 let animationsGLB = []
 let vrHands = {
@@ -35,36 +36,14 @@ export function getScene() {
 }
 
 export async function createScene(_engine) {
-    scene = new Scene(_engine)
-    // scene.useRightHandedSystem = true;
-    const cam = new ArcRotateCamera('cam', -Math.PI / 2, 1, 10, Vector3.Zero(), scene)
-    cam.attachControl(document.querySelector('canvas'), true)
-    cam.wheelDeltaPercentage = 0.01;
-    cam.minZ = 0.01
-    cam.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
-    // scene.createDefaultEnvironment()
-    const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
+
+    log(Math.sin(0))
+    log(Math.cos(0))
+
+    const {cam} = initScene(_engine)
 
     const plugin = new HavokPlugin(true, await HavokPhysics());
-    scene.enablePhysics(new Vector3(0, -9.8, 0), plugin);
-
-    bylonUIInit()
-    
-
-    const swordMat = createMat(scene, "swordMat", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
-
-
-    const ground = createGround(scene)
-    createRefbx(scene)
-
-    const gm = createGizmo(scene, false, true, false, false, false)
-
-
-    await importAnimations("idle_anim.glb")
-    await importAnimations("walk_anim.glb") //1
-    // await importAnimations("jump_anim.glb")
-    await importAnimations("jump_new.glb")
-    await importAnimations("walkback_anim.glb")
+    scene.enablePhysics(new Vector3(0, -9, 0), plugin);
 
     createHandMat(scene, true)
     const rHand = await importModelContainer(scene, './models/rightHand.glb')
@@ -73,6 +52,62 @@ export async function createScene(_engine) {
         right: rHand,
         left: lHand
     }
+
+    bylonUIInit()
+    const cave = await importCustomModel("./models/cave.glb", true)
+    cave.position.z -= 3
+    cave.addRotation(0,Math.PI/2,0)
+  
+    const caveAgg = createAggregate(cave, {mass:0}, "imported")
+    caveAgg.body.setCollisionCallbackEnabled(true)
+    caveAgg.body.getCollisionObservable().add(e => {
+        if(e.type === "COLLISION_CONTINUED"){
+            if(e.collidedAgainst.transformNode.name.includes("player")){
+                // e.collidedAgainst.applyImpulse(new Vector3(0,4000,0), e.collidedAgainst.transformNode.getAbsolutePosition()) // works
+                e.collidedAgainst.setLinearDamping(10)
+            }
+        }
+    })
+
+
+    const StairModel = await importCustomModel("./models/stair.glb")
+    const stair = StairModel.meshes[1]
+    stair.parent = null
+    StairModel.meshes[0].dispose()
+    stair.position.z += 4
+    stair.position.x += 1
+    stair.addRotation(0,Math.PI,0)
+
+    const stairAgg = createAggregate(stair, {mass:0}, "imported")
+    stairAgg.body.setCollisionCallbackEnabled(true)
+    stairAgg.body.getCollisionObservable().add(e => {
+        if(e.type === "COLLISION_CONTINUED"){
+            if(e.collidedAgainst.transformNode.name.includes("player")){
+                // e.collidedAgainst.applyImpulse(new Vector3(0,4000,0), e.collidedAgainst.transformNode.getAbsolutePosition()) // works
+                e.collidedAgainst.setLinearDamping(10)
+            }
+        }
+    })
+    
+    const ground = createGround(scene)
+    createAggregate(ground, scene, {mass:0})
+
+    const sphere = createShape({radius: .5},{ x:0, y: 2,z:0}, "sphere", "sphere", true)
+    const sphereAgg = createAggregate(sphere, {mass:1})
+
+
+    const wall = createShape({width: 4, height: 5, depth: 1},{ x:-4, y: 2,z:4}, "box", "box", true)
+    createAggregate(wall, {mass:0})
+    
+    const gm = createGizmo(scene, false, true, false, false, false)
+
+    await importAnimations("idle_anim.glb")
+    await importAnimations("walk_anim.glb") //1
+    // await importAnimations("jump_anim.glb")
+    await importAnimations("jump_new.glb")
+    await importAnimations("walkback_anim.glb")
+
+
 
     let sessionMode = getSelectedImmMode()
     // let sessionMode = "inline"
@@ -95,6 +130,18 @@ export async function createScene(_engine) {
   
     await scene.whenReadyAsync()
     create3DGuiManager(scene)
+    // const mainPanel = createMenuVTwo(scene, false)
+    // log(mainPanel);
+    // scene.onPointerDown = e=> {
+    //     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity())
+    //     const pickInfo = scene.pickWithRay(ray)
+
+    //     if(pickInfo.hit){
+    //         mainPanel.position.y = pickInfo.pickedPoint.y + 1.7
+    //         mainPanel.node.lookAt(pickInfo.pickedPoint,0,0,0)
+    //         mainPanel.node.addRotation(0,Math.PI,0)
+    //     }
+    // }
     setState("GAME")
     checkPlayers() // avatarUrl of everyplayers
     checkSceneModels()
@@ -120,12 +167,6 @@ export async function createScene(_engine) {
         const deltaT = _engine.getDeltaTime() / 1000
         players.forEach(pl => {            
             if (pl._moving) {
-                // pl.anims[1].play()
-                
-                // pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),0,0,0,BABYLON.Space.Local)
-                // pl.root.addRotation(0,Math.PI,0)
-                // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
-               
                 switch(pl.controller){
                     case "key":
                         if(pl.rootQuat){
@@ -134,7 +175,8 @@ export async function createScene(_engine) {
                             Quaternion.SlerpToRef(pl.root.rotationQuaternion, new Quaternion(0,1,0,0), 0.1, pl.root.rotationQuaternion)
                             Quaternion.SlerpToRef(pl.mainBody.rotationQuaternion, quat, 0.1, pl.mainBody.rotationQuaternion)
                         }
-                        pl.mainBody.locallyTranslate(new Vector3(0, 0, pl.currentSpd * deltaT * 1))
+                        pl.mainBody.locallyTranslate(new Vector3(0, 0, pl.currentSpd * deltaT))                       
+                        // pl.playerAgg.body.setLinearVelocity(new Vector3(pl.dir.x, 0, pl.dir.z))
                     break
                     case "mobile-joystick":
                         pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),Math.PI,0,0,BABYLON.Space.Local)
@@ -147,10 +189,18 @@ export async function createScene(_engine) {
                         Quaternion.SlerpToRef(pl.root.rotationQuaternion, new Quaternion(0,1,0,0), 0.1, pl.root.rotationQuaternion)
                         //  pl.root.lookAt(new Vector3(pl.movement.moveX, pl.root.position.y, pl.movement.moveZ),0,0,0, Space.LOCAL)
                         // Vector3.SlerpToRef(pl.mainBody.position, new Vector3(pl.camPosInWorld.x, pl.mainBody.position.y, pl.camPosInWorld.z), 0.1, pl.mainBody.position)
-                        pl.mainBody.position.x = pl.camPosInWorld.x
-                        pl.mainBody.position.z = pl.camPosInWorld.z
                         pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
-                        
+                        if(pl.camPosInWorld){
+                            pl.mainBody.position.x = pl.camPosInWorld.x
+                            pl.mainBody.position.z = pl.camPosInWorld.z
+                        }else {
+                            pl.mainBody.locallyTranslate(new Vector3(0, 0, pl.currentSpd * deltaT)) 
+                            if(pl._id === getCharacter()._id){
+                                getXrCam().position.x = pl.mainBody.position.x
+                                getXrCam().position.z = pl.mainBody.position.z
+
+                            }
+                        }
                         // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z), 0, 0, 0)
                         // pl.mainBody.locallyTranslate(new Vector3(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ))
                         // if(distance <= .1){
@@ -160,29 +210,40 @@ export async function createScene(_engine) {
                     break
                 }
                 
-                // pl.mainBody.physicsBody.setLinearVelocity(pl.currentSpd * deltaT * pl.movement.moveX, 0, pl.currentSpd * deltaT * pl.movement.moveZ)
-                // pl.root.position.x = pl.mainBody.position.x
-                // pl.root.position.z = pl.mainBody.position.z
-                // pl.mainBody.lookAt(new Vector3(pl.dir.x, pl.mainBody.position.y, pl.dir.z),0,0,0)
                 if(!pl._actionName) blendAnimv2(pl, pl.anims[1], pl.anims, true)
             }
-            
-            if(pl.camPosInWorld !== undefined && pl.camPosInWorld.x){
-                // const distance = Vector3.Distance(pl.mainBody.position, new Vector3(pl.camPosInWorld.x, pl.mainBody.position.y, pl.camPosInWorld.z))
-       
-                switch(pl.controller){               
-                    
-                }
-            }            
-            if(pl.headDirection && pl.controller === "vr-hands"){
-                
+         
+            if(pl.headDirection && pl.controller === "vr-hands"){                
                 pl.neckNode.lookAt(new Vector3(pl.headDirection.x, pl.headDirection.y, pl.headDirection.z), Math.PI,Math.PI - Math.PI/8,0, BABYLON.Space.WORLD)
             }
+
+            const plPos = pl.mainBody.getAbsolutePosition()
+            const start = new Vector3(plPos.x, plPos.y, plPos.z);
+            const end = new Vector3(plPos.x, plPos.y - 1.1, plPos.z);
+            // log(plPos.y)
+            scene.getPhysicsEngine().raycastToRef(start, end, pl.footRayCast);
+            if(!pl.footRayCast.hasHit){pl.playerAgg.body.setLinearDamping(0)
+            }else pl.playerAgg.body.setLinearDamping(10)
         })
     })
     return { scene }
 }
+function initScene(_engine){
+    scene = new Scene(_engine)
+    // scene.useRightHandedSystem = true;
+    const cam = new ArcRotateCamera('cam', -Math.PI / 2, 1, 10, Vector3.Zero(), scene)
+    cam.attachControl(document.querySelector('canvas'), true)
+    cam.wheelDeltaPercentage = 0.01;
+    cam.minZ = 0.01
+    cam.inputs.removeByType("ArcRotateCameraKeyboardMoveInput");
+    // scene.createDefaultEnvironment()
+    const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
 
+    createMat(scene, "swordMat", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
+    createRefbx(scene)
+
+    return {scene, light, cam}
+}
 function importAnimations(animationGLB, _scene) {
     return SceneLoader.ImportMeshAsync(null, "./models/" + animationGLB, null, _scene)
         .then((result) => {
@@ -210,7 +271,7 @@ function* animationBlending(fromAnim, fromAnimSpeedRatio, toAnim, toAnimSpeedRat
     currentAnimation = toAnim;
 }
 
-export function blendAnimv2(pl, toAnim, _anims, isLooping, afterEndDetail) {
+export function blendAnimv2(pl, toAnim, _anims, isLooping, afterEndDetail, _currentPlayingAnim) {
     let currentWeight = 1
     let newWeight = 0
     let desiredAnimIsPlaying = false
@@ -219,8 +280,11 @@ export function blendAnimv2(pl, toAnim, _anims, isLooping, afterEndDetail) {
             if (anim.name === toAnim.name) return desiredAnimIsPlaying = true
         }
     })
-    if (desiredAnimIsPlaying) return
-    let currentPlayingAnim = pl.anims.find(anim => anim.isPlaying)// idle anim
+    if (desiredAnimIsPlaying) return 
+    let currentPlayingAnim
+    if(_currentPlayingAnim) {currentPlayingAnim = _currentPlayingAnim
+    }else currentPlayingAnim =  pl.anims.find(anim => anim.isPlaying)// idle anim
+    
     if (!currentPlayingAnim) {
         currentPlayingAnim = pl.anims[0]
         if (afterEndDetail) {
@@ -238,9 +302,9 @@ export function blendAnimv2(pl, toAnim, _anims, isLooping, afterEndDetail) {
         newWeight += .1
         currentPlayingAnim.setWeightForAllAnimatables(currentWeight)
         toAnim.setWeightForAllAnimatables(newWeight)
-        // log(newWeight)
+
         if (newWeight >= 1) return clearInterval(pl.weightInterval)
-    }, 50)
+    }, 30)
     toAnim.onAnimationEndObservable.addOnce(() => {
         if (afterEndDetail) afterEndDetail.run()
     })
@@ -308,8 +372,7 @@ export function checkSceneModels(){
         sceneDescription.forEach(socketModel => {
             const {pos,scale, _id} = socketModel
             const modelAlreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
-            if (modelAlreadyHere) {
-                
+            if (modelAlreadyHere) {                
                 if(socketModel.parentMeshId){
                     const mesh = modelAlreadyHere.mesh
                     const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
@@ -317,7 +380,7 @@ export function checkSceneModels(){
                         parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
                     }
                 }
-                return log('model is already in scene ')
+                return 
             }else{
                 if(socketModel.type === "hlsurl"){
                     // Create the video element
@@ -415,28 +478,32 @@ export function checkSceneModels(){
                     log("importing model ")
                     importCustomModel(socketModel.url).then( avatar => {        
                         const Root = avatar.meshes[0]
+                        const mainMesh = avatar.meshes[1]
+                        mainMesh.parent = null
+                        Root.dispose()
             
-                        Root.position = new Vector3(pos.x, pos.y, pos.z)
-                        Root.scaling = new Vector3(scale.x,scale.y,scale.z)
-                        // attachToGizmoArray(Root)
-                        Root.id = socketModel._id
-                        modelsInScene.push({...socketModel, mesh: Root})
+                        mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
+                        mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
+                        attachToGizmoArray(mainMesh)
+                        mainMesh.id = socketModel._id
+                        modelsInScene.push({...socketModel, mesh: mainMesh})
                         // lookAr direction here
                     })
                 }
                 if(socketModel.type === "equipment"){
                     importCustomModel(socketModel.url).then( model => {        
                         const Root = model.meshes[0]
-                        model.meshes[1].material = scene.getMaterialByName("swordMat")
-                   
+                        model.meshes[1].material = scene.getMaterialByName("swordMat");
                         if(socketModel.parentMeshId){
-                          const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
-                          if(parentPlayer) parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})                      
+                            const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
+                            if(parentPlayer){
+                                parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
+                            }
                         }
+                        setMeshesVisibility(Root.getChildren(), socketModel.isVisible)
                         modelsInScene.push({...socketModel, mesh: Root})
                     }).catch(error => log(error))
-                }
-                
+                }                
             }
         })
     }
@@ -445,7 +512,7 @@ export function getPlayersInScene() {
     return players
 }
 export function getThingsInScene(){
-    return things
+    return modelsInScene
 }
 export function playerDispose(playerDetail) {
     log(playerDetail)
@@ -483,15 +550,15 @@ function createGround(scene){
 
     return ground
 }
-        function createRefbx(scene){
-            const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
-            const head = MeshBuilder.CreateBox("refbx", {size: .66}, scene)
-            head.parent = refbx
-            head.position = new Vector3(0,.9,.3)
-            refbx.isVisible = false
-            head.isVisible = false
-            refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
-        }
+function createRefbx(scene){
+    const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
+    const head = MeshBuilder.CreateBox("refbx", {size: .66}, scene)
+    head.parent = refbx
+    head.position = new Vector3(0,.9,.3)
+    refbx.isVisible = false
+    head.isVisible = false
+    refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
+}
 
 function createHandMat(scene, isLight){
     var handMat = new StandardMaterial("handMat", scene);

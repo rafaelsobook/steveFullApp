@@ -2,7 +2,7 @@ import {importCustomModel, parentAMesh, setMeshesVisibility } from "../creations
 import { getInitialPlayer } from "../dropdown.js"
 import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
-import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
+import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScene, getThingsInScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
 
 const { MeshBuilder, Vector3, Space, Quaternion, GizmoManager } = BABYLON
@@ -61,7 +61,6 @@ export function initializeSocket() {
             button.innerHTML = `room ${i + 1}`
             break;
       }
-
       listElement.append(button)
     }
   })
@@ -70,8 +69,6 @@ export function initializeSocket() {
 
     updateAllPlayers(allPlayers)
     updateImportedModels(sceneDescription)
-    checkPlayers()
-    checkSceneModels()
   })
   socket.on('who-am-i', detail => {
     myDetail = detail
@@ -86,133 +83,32 @@ export function initializeSocket() {
   socket.on('scene-updated', sceneDescriptionList => {
     const scene = getScene()
     if(!scene) return log("scene not ready")
-    // const gm = new GizmoManager(scene, 1)
-    // gm.positionGizmoEnabled = true
-    // gm.rotationGizmoEnabled  = true
-    // gm.usePointerToAttachGizmos = false;
-    log("scene updated ")
     sceneDescriptionList.forEach( desc => {
-      // const scale = desc.scale
-      // const pos = desc.pos
-
       const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
       if(modelAlreadyHere) return
       importedModelsInServer.push(desc)
       checkSceneModels()
-      // if(desc.type === "equipment"){
-      //   const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
-      //   if(modelAlreadyHere) return
-      //   importedModelsInServer.push(desc)
-      //   checkSceneModels()
-      // }
-      // if(desc.type === "hlsurl"){
-      //   const engine = scene.getEngine()
-      //   // Create the video element
-      //   var video = document.createElement("video");
-      //   video.autoplay = true;
-      //   video.playsInline = true;
-      //   video.src = desc.url;
-      //   video.id = desc._id
-        
-      //   console.log("Adding HTML video element");
-      //   document.body.appendChild(video);
-      //   // This is where you create and manipulate meshes
-      //   var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
-      //   // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
-      //   TV.position = new Vector3(pos.x,pos.y, pos.z)
-      //   TV.scaling = new Vector3(scale.x, scale.y, scale.z)
-      //   TV.id = desc._id
-      //   attachToGizmoArray(TV)
-      //   TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
-      //   TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
-      //   TV.actionManager = new BABYLON.ActionManager(scene);
-      //   if(getGizmo()) {
-      //     attachToGizmoArray(TV); 
-      //     // changeGizmo(false,false, true)
-      //   }
-    
-      //   // Video material
-      //   const videoMat = new BABYLON.StandardMaterial("textVid", scene);
-      //   var video = document.querySelector('video');
-      //   video.style.width = "100px"
-      //   video.preload ="none"
-      //   var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
-
-      //   videoMat.backFaceCulling = false;
-      //   videoMat.diffuseTexture = videoTexture;
-      //   videoMat.emissiveColor = BABYLON.Color3.White();
-      //   TV.material = videoMat;
-      //   var htmlVideo = videoTexture.video;
-
-      //   if (Hls.isSupported()) {
-      //       var hls = new Hls();
-      //       hls.loadSource(desc.url);
-      //       hls.attachMedia(video);
-      //       engine.hideLoadingUI();
-      //       hls.on(Hls.Events.MANIFEST_PARSED,function() {
-      //           TV.actionManager.registerAction(
-      //               new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-      //               function(event) {
-      //                   htmlVideo.play();
-      //                   // changeGizmo(false, false, true)
-      //               })
-      //           );
-      //       });
-      //   } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-      //       video.src = desc.url;
-      //       engine.hideLoadingUI();
-      //       video.addEventListener('loadedmetadata',function() {
-      //           TV.actionManager.registerAction(
-      //               new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
-      //               function(event) {
-      //                   htmlVideo.play();
-      //                   // changeGizmo(false, false, true)
-      //               })
-      //           );
-      //       });
-      //   }
-      // }    
-      // if(desc.type === "primitive"){
-      //   let model
-      //   let error=false
-      //   switch(desc.shape){
-      //     case "box":
-      //       model = MeshBuilder.CreateBox(desc.shape, { height: 2 }, scene)
-      //     break
-      //     case "cylinder":
-      //       model = MeshBuilder.CreateCylinder(desc.shape, { diameter: 2 }, scene)
-      //     break
-      //     default:
-      //       log("unsupported shape ", desc)
-      //       error = true
-      //     break
-      //   }
-      //   if(error) return
-
-      //   model.position = new Vector3(pos.x,pos.y,pos.z)
-      //   model.scaling = new Vector3(scale.x,scale.y,scale.z)
-      //   model.id = desc._id
-      //   attachToGizmoArray(model)
-      //   // rotation implement here
-      // }
-      // if(desc.type === "remoteurl"){
-      //   log("importing model ")
-      //   importCustomModel(desc.url).then( avatar => {        
-      //     const Root = avatar.meshes[0]
-
-      //     Root.position = new Vector3(pos.x, pos.y, pos.z)
-      //     Root.scaling = new Vector3(scale.x,scale.y,scale.z)
-      //     // attachToGizmoArray(Root)
-      //     Root.id = desc._id
-      //     // importedModelsInServer.push({...desc, body: Root})
-      //     // lookAr direction here
-      //   })
-      // }
     })
 
   })
+  socket.on("toggle-visibility", descriptions => {
+    // log(getThingsInScene())
+    // log(descriptions)
+    descriptions.forEach(desc => {        
+        const itemOnScene = getThingsInScene().find(itm =>itm._id === desc._id)
+        if(itemOnScene){
+            if(desc.isVisible !== undefined){
+                itemOnScene.MeshBuilder
+                setMeshesVisibility(itemOnScene.mesh.getChildren(), desc.isVisible)
+            }
+            // log(desc.name, desc.isVisible)
+        }
+    })    
+})
   socket.on("moved-object", sceneDescriptions => {
-    sceneDescriptions.forEach(modelData => {
+    const scene = getScene()
+    if(!scene) return log("scene not ready")
+    sceneDescriptions.forEach(modelData => {      
       const sceneModel = scene.getMeshById(modelData._id)
       if(!sceneModel) return log(`model ${modelData._id} not found `)
       sceneModel.position.x = modelData.pos.x
@@ -227,17 +123,12 @@ export function initializeSocket() {
       const playersInScene = getPlayersInScene()
       const player = playersInScene.find(pl => pl._id === data._id)
       if (player) {
-        // player.leftHandControl.isVisible = true
-        // player.rightHandControl.isVisible = true
+  
         if(player._id !== getMyDetail()._id){
           const { wristPos , wristQuat, headDirection, fingerCoord} = data
-          // log(wristPos, wristQuat)
-
-          if(!wristPos || !wristQuat){
-            // player.lHand.isVisible = false
-            // player.rHand.isVisible = false
-            return
-          }
+      
+          if(!wristPos || !wristQuat) return
+          
           setMeshesVisibility([player.rHandMesh, player.lHandMesh], true)
           // updating other player hand pos
           player.lHand.position.x = wristPos.left.x
@@ -309,9 +200,7 @@ export function initializeSocket() {
         playerThatMoved._moving = data._moving
         playerThatMoved.rootQuat = quat
         playerThatMoved.controller = controller
-        if(camPosInWorld) playerThatMoved.camPosInWorld = camPosInWorld
-        
-
+        playerThatMoved.camPosInWorld = camPosInWorld
       }
     })
   })
@@ -323,12 +212,13 @@ export function initializeSocket() {
       // log("player stopped !")
       plThatStopped.mainBody.position.x = data.loc.x
       plThatStopped.mainBody.position.z = data.loc.z
-      blendAnimv2(plThatStopped, plThatStopped.anims[0], plThatStopped.anims, true)
+      plThatStopped.mainBody.position.y = data.loc.y
+      plThatStopped.anims[1].stop()
+      blendAnimv2(plThatStopped, plThatStopped.anims[0], plThatStopped.anims, true, false, plThatStopped.anims[1])
       plThatStopped.dir = data.dir
       plThatStopped.movement = data.movement
       plThatStopped._moving = false
-
-      if (!data.movement.moveX && !data.movement.moveZ) plThatStopped._moving = false
+      // if (!data.movement.moveX && !data.movement.moveZ) plThatStopped._moving = false
     }
   })
   socket.on("player-emitted-action", data => {
@@ -338,17 +228,16 @@ export function initializeSocket() {
       if (player._actionName === data.actionName) return log("still doing the same action")
       player._actionName = data.actionName
       switch (player._actionName) {
-        case "jump":
-          log("someone jumped")
-          // blendAnimv2(player, player.anims[2], player.anims, false, {
-          //   lastAnimation:  player.anims[2],
-          //   run: () => {
-          //     blendAnimv2(player, player.anims[0], player.anims, false)
-          //   }
-          // })
-          player.anims[1].stop()
-          blendAnimv2(player, player.anims[2], player.anims, false)
-          break;
+        case "jump": 
+          player.playerAgg.body.applyImpulse(new Vector3(0,2500,0), player.mainBody.getAbsolutePosition())
+          blendAnimv2(player, player.anims[2], player.anims, false, {
+            lastAnimation: player.anims[2],
+            run: () => {
+              // player.playerAgg.body.setLinearDamping(10)
+              if(!player.anims[1].isPlaying) blendAnimv2(player, player.anims[0], player.anims, true)
+            }
+          })
+        break;
       }
 
     }
@@ -384,18 +273,19 @@ export function emitStop(movementDetail) {
   socket.emit('emit-stopped', movementDetail)
 }
 export function emitAction(actionDetail) {
-  log("emitting ", actionDetail.actionName)
   if (!socket) return log("socket not ready")
   socket.emit("emit-action", actionDetail)
 }
 // tools
 function updateAllPlayers(_newPlayers, _newModels) {
   playersInServer = _newPlayers
+  checkPlayers()
   // importedModelsInServer = _newModels
   // log(playersInServer)
 }
 function updateImportedModels(_newModels) {
   importedModelsInServer = _newModels
+  checkSceneModels()
 }
 export function getMyDetail() {
   return myDetail

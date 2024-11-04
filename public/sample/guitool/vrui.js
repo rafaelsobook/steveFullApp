@@ -1,3 +1,5 @@
+import { randomNumToStr, setMeshesVisibility } from "../creations.js"
+import { getThingsInScene } from "../scenes/createScene.js"
 import { getMyDetail, getSocket } from "../socket/socketLogic.js"
 import { create3DGuiManager, createThreeDBtn, createThreeDPanel, openCloseControls } from "./gui3dtool.js"
 import { createGrid, createRect, createTxt } from "./guitool.js"
@@ -7,6 +9,12 @@ const log = console.log
 
 let menuScreen // a big screen infront of camera or mesh
 let menuScreenVersion = undefined // 1, 2, 3 etc
+
+const myItemList = [
+    {
+        id: randomNumToStr()
+    }
+]
 
 export function getMenuScreen(){
     return menuScreen
@@ -20,19 +28,21 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     let itemsBtns = []
     let settingsBtns = []
 
+    const socket = getSocket()
+
     const manager = create3DGuiManager(scene)
-    const mainPanel = createThreeDPanel(manager, 0.01, "normal", {x:0,y:1.5,z:1}
+    const mainPanel = createThreeDPanel(manager, 0.01, "normal", {x:0,y:0,z:0}
     )
     menuScreen = mainPanel
     menuScreenVersion = 2
     mainPanel.isVertical = true
-    
     
     const leftPanel = createThreeDPanel(manager, 0.01, "normal", {x:0,y:0,z:0}, false, true)
     leftPanel.isVertical = false
 
     const itemsBtn = createThreeDBtn(leftPanel, "ITEMS", 49, .06)
     const settingsBtn = createThreeDBtn(leftPanel, "SETTINGS", 49, .06)
+
     itemsBtn.onPointerUpObservable.add(function(){
         openCloseControls(itemsBtns, true)
         openCloseControls(settingsBtns, false, () => {
@@ -42,6 +52,7 @@ export function createMenuVTwo(scene, _meshParent, _pos){
         rightPanel.updateLayout()
         log(rightPanel.children.length)
     });  
+
     settingsBtn.onPointerUpObservable.add(function(){
         openCloseControls(itemsBtns, false)
         openCloseControls(settingsBtns, true, () => {
@@ -53,19 +64,32 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     });  
 
     const rightPanel = createThreeDPanel(manager, 0.02, "normal", {x:0,y:-.06,z:0}, false)
-    for(var i = 0;i<1;i++){
-        const item = createThreeDBtn(rightPanel, "Sword", 46, .05, "./images/sword.png")
-        itemsBtns.push(item)
+    for(var i = 0;i<myItemList.length;i++){
+
+        const holographBtn = createThreeDBtn(rightPanel, "Sword", 46, .05, "./images/sword.png")
+        holographBtn.id = myItemList[i].id
+        itemsBtns.push(holographBtn)
         rightPanel.updateLayout()
-        item.onPointerUpObservable.add(() => {
+        holographBtn.onPointerUpObservable.add( evnt => {
             
-            const socket = getSocket()
+            log(evnt)
+            
             const myDetail = getMyDetail()
+            const itemOnScene = getThingsInScene().find(itm =>itm._id === holographBtn.id)
+            if(itemOnScene) {
+                log(itemOnScene)
+                socket.emit("toggle-visibility", 
+                {
+                    entityId: holographBtn.id,
+                    roomNum: myDetail.roomNum
+                })
+                return log("item already on scene do not create")
+            }
             socket.emit("create-something",{
                 roomNum: myDetail.roomNum, 
                 entityType: "equipment", 
                 entityUrl: "./models/sword.glb", 
-                entityId: Math.random().toLocaleString().split(".")[1], 
+                entityId: holographBtn.id, 
                 parentMeshId: myDetail._id
             })
         })
@@ -75,11 +99,11 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     const arvrBtn = createThreeDBtn(false, "AR/VR", 46, .05)
     settingsBtns = [soundBtn,arvrBtn]
     rightPanel.isVertical = false
-    
 
     mainPanel.addControl(leftPanel)
     mainPanel.addControl(rightPanel)
     rightPanel.updateLayout()
+
     return mainPanel
 }
 

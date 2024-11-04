@@ -9,7 +9,8 @@ const { Server } = require("socket.io")
 
 const PORT = process.env.PORT || config.port
 const log = console.log
-const { generateUUID } = require("./tools.js")
+const { generateUUID, createRandomID} = require("./tools.js");
+
 
 // HTTPS options (loading the SSL certificate and key)
 let httpsOptions = {}
@@ -42,15 +43,15 @@ rooms.set(1, {
     players: [],
     sceneDescription: [
         {
-            _id: "123",
+            _id: `box${createRandomID()}`,
             type: "primitive",
             shape: "box",
-            pos: {x:1.5,y:0,z:2},
+            pos: {x:1.5,y:5,z:8},
             scale: {x:1,y:2,z:3},
             dir: {x:0,y:0,z:0},
         },
         {
-            _id: "d1231x",
+            _id: `cylinder${createRandomID()}`,
             type: "primitive",
             shape: "cylinder",
             pos: {x:-2,y:0,z:-1},
@@ -58,7 +59,7 @@ rooms.set(1, {
             dir: {x:0,y:0,z:0},
         },
        {
-            _id: "128383",
+            _id: `sword${createRandomID()}`,
             type: "remoteurl",
             url: "./models/sword.glb",
             pos: {x:2,y:1,z:4},
@@ -211,13 +212,24 @@ io.on("connection", socket => {
             type: entityType,// "equipment",
             url:  entityUrl, //"./models/sword.glb",
             pos: {x:.1,y:0,z:-.06},
+            scale: {x:1,y:1,z:1},
             dir: {x:0,y:0,z:0},
             isVisible: true,
             parentMeshId,
         })
         io.to(roomNum).emit("scene-updated", room.sceneDescription)
     })
-
+    socket.on("toggle-visibility", data => {
+   
+        const {roomNum,entityId} = data
+        const room = rooms.get(roomNum)
+        if(!room) return log('room not found')
+        const entity = room.sceneDescription.find(entity => entity._id === entityId)
+        if(entity) {
+            entity.isVisible = !entity.isVisible
+            io.to(roomNum).emit("toggle-visibility", room.sceneDescription)
+        }
+    })
     socket.on("moved-object", data => {
         const room = rooms.get(data.roomNum)
         if(!room) return log("moving object from invalid room")
@@ -234,7 +246,6 @@ io.on("connection", socket => {
     let spd = .3 / fps
     socket.on("emit-move", data => {
        const { wristPos } = data
-
         for (const [key, value] of rooms) {
             let playerToMove = value.players.find(pl => pl._id === data._id)
             if (playerToMove) {
@@ -258,6 +269,7 @@ io.on("connection", socket => {
                 playerToStop.dir = data.direction
                 playerToStop.movement = data.movement
                 playerToStop.loc = data.loc
+                
                 playerToStop._moving = false
                 io.to(key).emit("player-stopped", playerToStop)
             }
@@ -265,24 +277,28 @@ io.on("connection", socket => {
     })
     socket.on('emit-action', data => {
         const { actionName, _id } = data
-        // log(actionName)
+        log(data)
         for (const [key, value] of rooms) {
+            log(key)
+            log(value.players)
             let playerEmittingAction = value.players.find(pl => pl._id === _id)
-            if (!playerEmittingAction) return
+    
             if (playerEmittingAction) {
+                log(actionName)
                 if (playerEmittingAction._actionName === actionName) return log('still on ', actionName)
                 switch (actionName) {
                     case "jump":
 
-                        break
+                    break
                 }
+
                 playerEmittingAction._actionName = actionName
                 io.to(key).emit("player-emitted-action", data)
                 setTimeout(() => {
                     playerEmittingAction._actionName = undefined
                     io.to(key).emit("remove-action", data)
                 }, 1000)
-            }
+            }else log("player emit action not found")
         }
     })
     // setInterval(() => {

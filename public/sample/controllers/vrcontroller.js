@@ -5,9 +5,12 @@ import { createButtonForHand } from "../guitool/guitool.js"
 import { createMenuVOne, createMenuVTwo, getMenuScreen } from "../guitool/vrui.js"
 import { getCharacter } from "../index.js"
 import { emitMove, emitStop, getMyDetail, getSocket } from "../socket/socketLogic.js"
-const { Vector3,Color3,MeshBuilder, Axis,StandardMaterial,WebXRFeatureName, WebXRHandJoint, GizmoManager, Quaternion} = BABYLON
+const { Vector3,Color3,MeshBuilder,Space, Axis,StandardMaterial,WebXRFeatureName, WebXRHandJoint, GizmoManager, Quaternion} = BABYLON
 const log = console.log
-
+let xrCam
+export function getXrCam(){
+    return xrCam
+}
 export async function initVrStickControls(scene, xr){
     let cam = xr.baseExperience.camera
     let myChar = getCharacter()
@@ -18,12 +21,13 @@ export async function initVrStickControls(scene, xr){
 
     let isCharacterAndCameraMade = setInterval( async () => {
         myChar = getCharacter()
-        cam = xr.baseExperience.camera
-        log("check isCharacterAndCameraMade ...")
-        if(myChar && cam){
-            log("isCharacterAndCameraMade Is Done checking ...")
-            clearInterval(isCharacterAndCameraMade)
+        cam = xr.baseExperience.camera;
 
+        if(myChar && cam){
+            // log("isCharacterAndCameraMade Is Done checking ...")
+            xrCam = cam
+            clearInterval(isCharacterAndCameraMade)
+            cam.checkCollisions = true
             let myPos = myChar.mainBody.position
             setMeshPos(cam, {x: myPos.x, y: camPosY, z: myPos.z})
 
@@ -51,18 +55,16 @@ export async function initVrStickControls(scene, xr){
                     if(!myChar) return console.warn("fix error myCharacter not yet made and vr is loaded already")
                     myPos = myChar.mainBody.position
                     const side = hand.xrController.inputSource.handedness
-                    // cam.position.x = myPos.x
-                    // cam.position.y = camPosY
-                    // cam.position.z = myPos.z
+                    cam.position.x = myPos.x
+                    cam.position.y = myChar.headBone.getAbsolutePosition().y
+                    cam.position.z = myPos.z
                     
-                    nameMesh.position = cam.getFrontPosition(2) 
 
                     if(side === "right" && r_wrist === undefined) {
                         r_vrhand = hand.handMesh
                         rightJointMeshes = hand._jointMeshes
                         myChar.rHandMesh.isVisible = false
-                        r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
-                        
+                        r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)                        
                     }
                     if(side === "left" && l_wrist === undefined && !leftJointMeshes) {  
                         l_vrhand = hand.handMesh 
@@ -72,31 +74,35 @@ export async function initVrStickControls(scene, xr){
                         
                         // tipBx.parent = l_indxTip
                         l_middleTip = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_TIP)
-                        l_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)
-                        
+                        l_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)                        
                     } 
                 })
                 handFeature.onHandRemovedObservable.add( () => {
                     const myDetail = getMyDetail()
                     socket.emit("hide-or-show-hands", {roomNum: myDetail.roomNum, _id: myDetail._id, isVisible: false})
                 })
-
                 
                 // creation for VR UI Tools
                 const toRotateBones = [...getControllableJoint("left"),...getControllableJoint("right")]
                 // interval for checking if you have already loaded your vr hands in the scene
                 // if it does we are going to attach UI in your hands and create other UI for your menu
                 // the onHandAddedObservable triggers when you load your left or right hand. somtimes only the left or right hand is loaded we need both of them to be ready before we init all the UI
+                
+                let menuScreen = undefined
                 let interval = setInterval(() => {
                     // log("searching for both hands")
                     if(r_wrist || l_wrist) { clearInterval(interval)
-                        const menuScreen = createMenuVTwo(scene, false)
+                        menuScreen = createMenuVTwo(scene, false)
                         tipBx = MeshBuilder.CreateSphere("asd", { diameter: .2/10, segments: 4}, scene);tipBx.isVisible =false
                         // const screen = createMenuVOne(scene, false)
+                        menuScreen.isVisible = false
+                        menuScreen.children.forEach(chldControl =>{
+                            openClosePanel(chldControl, menuScreen.isVisible)
+                        })
                         const r_wrist_btn = createButtonForHand("Menu", r_wrist, scene, tipBx, () => {
                             // screen.isVisible = !screen.isVisible
-                            menuScreen.position = cam.getFrontPosition(.4)
-                            menuScreen.node.lookAt(cam.getFrontPosition(.1),Math.PI,0,0)
+                           
+                            
                             // screen.lookAt(cam.getFrontPosition(.1),0,0,0)
                             // screen.isVisible ? xr.pointerSelection.attach() : xr.pointerSelection.detach()
 
@@ -108,10 +114,8 @@ export async function initVrStickControls(scene, xr){
                                 openClosePanel(chldControl, menuScreen.isVisible)
                             })
                         })
-
                         r_wrist_btn.position = new Vector3(0,-2,0)
-                        r_wrist_btn.addRotation(-Math.PI/2, Math.PI,0)
-                    }
+                        r_wrist_btn.addRotation(-Math.PI/2, Math.PI,0)                    }
                 }, 100)
 
                 let forwardDir = cam.getDirection(BABYLON.Vector3.Forward()).normalize();
@@ -127,14 +131,18 @@ export async function initVrStickControls(scene, xr){
                         // log(dir)
                         // cam.position.addInPlace(new Vector3(forwardDir.x*deltaT, 0, forwardDir.z*deltaT))
                     }
-                    cam.position.y = camPosY
+                    if(menuScreen){
+                        menuScreen.position = cam.getFrontPosition(.4)
+                        menuScreen.node.lookAt(cam.position,0,0,0)
+                        menuScreen.node.addRotation(0,Math.PI,0)
+                    }
+     
                     if(isUsingController) return
                     if(!l_wrist || !r_wrist) return 
                     if(!myChar) return
                 
                     const camFrontWorldPos = cam.getFrontPosition(2)
-                    nameMesh.position = camFrontWorldPos
-
+      
                     const lWristPos = l_wrist.position
                     const rWristPos = r_wrist.position
 
@@ -205,9 +213,9 @@ export async function initVrStickControls(scene, xr){
                     // text1.text = `lwristPosX: ${l_wrist.position.x} rWristPos: ${r_wrist.position.x}`
                 
                     let indxAndMiddleDistance = Vector3.Distance(l_indxTip.position, l_middleTip.position)
-                    // text1.text = `distance ${indxAndMiddleDistance}`
-                    // let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
-                    // let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
+                    
+                    let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
+                    let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
                     const cPos = myChar.mainBody.position
                     // const tPos = {x:cPos.x + frontPos.x , y: 1, z:cPos.z + frontPos.z}
                     const tPos = {x: camFrontWorldPos.x, y: camPosY, z: camFrontWorldPos.z}
@@ -215,15 +223,48 @@ export async function initVrStickControls(scene, xr){
                     const camPosClone = cam.position.clone()
                     camPosClone.y = myChar.mainBody.position.y
                     const distance = Vector3.Distance(myChar.mainBody.position, camPosClone)
+
+                    cam.position.y = myChar.headBone.getAbsolutePosition().y
                     
                     // log(`distance from XRCamera ${parseFloat(distance)}`)
                     // log(distance)
                     if(indxAndMiddleDistance <= 0.02){
-                        cam.position.addInPlace(new Vector3(forwardDir.x*deltaT, 0, forwardDir.z*deltaT))
-                        // no need to emit move here the distance will detect how far the camera is
+                        // cam.position.addInPlace(new Vector3(forwardDir.x*deltaT, 0, forwardDir.z*deltaT))
+                        // cam.position.x = myPos.x
+                        // cam.position.y = myChar.headBone.getAbsolutePosition().y
+                        // cam.position.z = myPos.z
+                        emitMove({
+                            _id: myChar._id,
+                            movement: { moveX: 0, moveZ: 1 },
+                            direction: {x:cPos.x + frontPos.x , y: cam.position.y, z:cPos.z + frontPos.z},
+                            camPosInWorld: false,
+                            // wristPos: { 
+                            //     left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
+                            //     right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
+                            // },
+                            controllerType: 'vr-hands'
+                        })
+                        clearTimeout(stopTimeOut)
+                        stopTimeOut = setTimeout(() => {
+                            emitStop({
+                                _id: myChar._id,
+                                movement: { moveX: 0, moveZ: 0 },
+                                loc: {x: cPos.x, y: cPos.y, z: cPos.z},
+                                direction: {x:cPos.x + frontPos.x , y: cam.position.y, z:cPos.z + frontPos.z},
+                                controllerType: 'vr-hands',
+                                camPosInWorld: false
+                            })
+                        }, 100)
+                        // cam.position.x = myPos.x
+                        // cam.position.y = myChar.headBone.getAbsolutePosition().y
+                        // cam.position.z = myPos.z
+
+                        // nameMesh.position = cam.getFrontPosition(1.5)
+                        // text1.text = `${myPos.x} ${myPos.z}`
+                        return
                     }
 
-                    if(distance > 0.04){
+                    if(distance > 0.06){
                         emitMove({
                             _id: myChar._id,
                             movement: { moveX: 0, moveZ: 0 },
@@ -273,14 +314,13 @@ export async function initVrStickControls(scene, xr){
             myChar = getCharacter()   
             cam = xr.baseExperience.camera;
             const myPos = myChar.mainBody.position
-            
-            nameMesh.position = cam.position;
-            nameMesh.position.z += 1
+            nameMesh.isVisible = false
             if(!myChar) return 
             setMeshesVisibility(myChar.root.getChildren()[0].getChildren(), false)
             cam.position.x = myPos.x
             cam.position.y = camPosY
             cam.position.z = myPos.z
+            // if(myChar.headBone) cam.parent = myChar.headBone
             if(mc.handedness === "left"){
                 let thumbstickComponent = mc.getComponent(mc.getComponentIds()[2]);
                 // log(thumbstickComponent)
@@ -294,21 +334,20 @@ export async function initVrStickControls(scene, xr){
                     
                     myChar = getCharacter()
                     if(!myChar) return
-                    // const frontPos = cam.getFrontPosition(2)
                     
                     // The forward direction can be calculated by transforming a forward vector
                     let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
                     let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
                     const cPos = myChar.mainBody.position
-                    const tPos = {x:cPos.x + frontPos.x , y: 1, z:cPos.z + frontPos.z}
-                    nameMesh.position = frontPos;
+                    const tPos = {x:cPos.x + frontPos.x , y: cPos.y, z:cPos.z + frontPos.z}
+                    // nameMesh.position = frontPos;
                     // text1.text = `x:${axes.x}, y: ${axes.y * -1}`
-                    const absoluteFrontPos = cam.getFrontPosition(1.5)
-                    nameMesh.position = absoluteFrontPos;
-                    text1.text = `x:${axes.x}, y: ${axes.y }`
+                    // const absoluteFrontPos = cam.getFrontPosition(1.5)
+                    // nameMesh.position = absoluteFrontPos;
+                    // text1.text = `x:${axes.x}, y: ${axes.y }`
                     // text1.text = `_id: ${myChar._id}`
                     cam.position.x = cPos.x
-                    cam.position.y = camPosY
+                    cam.position.y = myChar.headBone.getAbsolutePosition().y
                     cam.position.z = cPos.z
                     if(axes.x === 0 && axes.y === 0){
                         if(isTriggeredStop) return 

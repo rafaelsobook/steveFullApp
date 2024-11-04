@@ -59,16 +59,14 @@ export function initKeyControls(scene) {
         if(movement.moveZ === -1 && movement.moveX === -1) refbx.lookAt(camDir,-Math.PI + Math.PI/4,0,0)
         
         
-        // btf.position = cPos
-        // btf.lookAt(new Vector3(tPos.x, btf.position.y, tPos.z))
-        // btf.locallyTranslate(new Vector3(movement.moveX*2,0,movement.moveZ*2))
-        // const btfPos = btf.position
+        // const refBxFrontPosition = Vector3.TransformCoordinates(Vector3.Forward(), refbx.computeWorldMatrix(true))
         const _quat = refbx.rotationQuaternion
 
         emitMove({
             _id: myCharacterInScene._id,
             movement,
             direction: tPos,
+            // direction: {x: camDir.x, y: 1, z: camDir.z},
             controllerType: 'key',
             quat: {x:_quat.x, y:_quat.y, z: _quat.z, w: _quat.w}
         })
@@ -77,6 +75,8 @@ export function initKeyControls(scene) {
         const cam = scene.getCameraByName("cam")
         const keypressed = e.key.toLowerCase()
         let willStop = false
+        let myCharacterInScene = getCharacter()
+        if (!myCharacterInScene) return
         switch (keypressed) {
             case "w":
             case "arrowup":
@@ -98,15 +98,16 @@ export function initKeyControls(scene) {
                 movement.moveZ = 0
                 willStop = true
                 break
+            case " ":
+                if(myCharacterInScene._actionName === "jump") return
+                emitAction({ _id: myCharacterInScene._id, actionName: "jump" })
+                break
         }
         if(!willStop) return
-        let myCharacterInScene = getCharacter()
-        if (!myCharacterInScene) return
         camDir = cam.getForwardRay().direction
         cPos = myCharacterInScene.mainBody.position
         tPos = { x: cPos.x + camDir.x, y: cPos.y, z: cPos.z + camDir.z }
-        
-        if (keypressed === " ") return emitAction({ _id: myCharacterInScene._id, actionName: "jump" })
+
 
         emitStop({
             _id: myCharacterInScene._id,

@@ -7,10 +7,9 @@ const dropdownContent = document.getElementById("dropdownContent");
 const dropdownImmMode = document.getElementById("dropdownImmMode");
 const dropdownImmModeContent = document.getElementById("dropdownImmModeContent");
 
-let dropDownInitiated = false
 
 // we have two dropdown element because we have two buttons and two dropdwon element can be displayed in the view at the same time
-// list of available character options on the dropdown menu // this is the list we will see once select avatar btn is pressed
+// list of available character options on the dropdown menu // this is the list we will see once dropdownBtn is pressed
 let availableAvatars = [
     {
         avatarName: "rafael",
@@ -41,14 +40,14 @@ let availableAvatars = [
 //        avatarUrl: "./models/sehu.glb"
 //    }
 ]
-// list of available immersive option on the dropdown menu // this is the list we will see once select immersive option btn is pressed
+// list of available immersive option on the dropdown menu // this is the list we will see once dropdownImmMode is pressed
 let availableImmMode = [
-    "Immersive VR",
-    "Immersive AR"
+    "immersive-vr",
+    "immersive-ar"
 ]
 
 let selectedAvatar = {...availableAvatars[2], name: `name${randomNumToStr()}`} // steve purple by default
-let selectedImmMode = "Immersive VR" // immersive vr by default
+let selectedImmMode = "immersive-vr" // immersive vr by default
 
 updateButtonsInnerHTML()// only for updating Buttons innerHTML UI nothing else
 
@@ -63,8 +62,6 @@ export function getSelectedImmMode(){
 }
 
 export function initDropDown(){
-    if(dropDownInitiated) return
-
     // Toggle the dropdown visibility when the button is clicked
     dropdownBtn.addEventListener("click", function() {
         dropdownContent.classList.toggle("show");
@@ -99,8 +96,7 @@ export function initDropDown(){
             if(!avatar) return
             selectedAvatar = avatar
         }
-        if (parentClassName.includes("immersive-opt")) selectedImmMode = event.target.innerHTML
-        
+        if (parentClassName.includes("immersive-opt")) selectedImmMode = event.target.innerHTML        
         if (!event.target.matches('.dropdown-btn')) {
             if (dropdownContent.classList.contains("show")) {
                 dropdownContent.classList.remove("show");
@@ -109,7 +105,6 @@ export function initDropDown(){
                 dropdownImmModeContent.classList.remove("show");
             }
         }
-
         // updating the buttons innerHTML value according to chosen avatar or immersive option
         updateButtonsInnerHTML()
     };
