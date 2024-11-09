@@ -90,20 +90,21 @@ export function createThreeDBtn(panel, label, fontSize, _scaleXYZ, _imgUrl, isNo
     // button.onPointerUpObservable.add(() => {
     //     button.mesh.dispose()
     // })
-    if(_imgUrl) {
-        // log("has image url")
-        // button.imageUrl = _imgUrl
-        // log(button.imageUrl)
-        if(label){
-            button.text = label
-            button.imageUrl = _imgUrl
-        }else button.content = createGuiImg("asd", _imgUrl)
-       
-    }else{
-        // log('has no image url ', label)
-        button.content = createTxt(label, fontSize, "white");  
-    }
+    if(label)button.text = label
+    if(_imgUrl)button.imageUrl = _imgUrl
     if(isNotVisible) button.isVisible = false
+
+    // button.content has problems if I am using panel.removeControl(button)
+    // if(_imgUrl) {
+    //     if(label){
+    //         button.text = label
+    //         button.imageUrl = _imgUrl
+    //     }else button.content = createGuiImg("asd", _imgUrl)       
+    // }else{
+    //     button.text = label
+    //     button.text.color = "red" 
+    // }
+    
     return button
 }
 

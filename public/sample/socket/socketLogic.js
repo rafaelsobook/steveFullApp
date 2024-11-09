@@ -1,4 +1,4 @@
-import {importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
+import {createBullet, importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
 import { getInitialPlayer } from "../dropdown.js"
 import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
@@ -115,6 +115,9 @@ export function initializeSocket() {
       sceneModel.position.y = modelData.pos.y
       sceneModel.position.z = modelData.pos.z
     })
+  })
+  socket.on("trigger-bullet", data => {
+    createBullet(data.pos, data.dir)
   })
   // VR player move hands
   socket.on("player-moved-hands", playersInRoom => {

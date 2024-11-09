@@ -2,7 +2,7 @@ const {Quaternion,Color3, Space,Axis, SkyMaterial,Debug, BoneIKController, Gizmo
 
 import { initJoyStick } from '../controllers/thumbController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
-import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility } from '../creations.js'
+import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
 import { getSelectedImmMode } from '../dropdown.js'
 import { attachToGizmoArray } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
@@ -52,6 +52,32 @@ export async function createScene(_engine) {
         right: rHand,
         left: lHand
     }
+
+    // const gun = await importCustomModel("./models/gun.glb", true)
+    // gun.name = "gun"
+
+    // let num = 0.005
+    // scene.registerBeforeRender(() => {
+    //     // num+=.001
+    //     gun.addRotation(num,num,num)
+    // })
+    // setInterval(() => {
+    //     attachToGizmoArray(gun)
+    //     const forwardPos = Vector3.TransformCoordinates(new Vector3(-2,.5,0), gun.computeWorldMatrix(true))
+    //     const targetPos = Vector3.TransformCoordinates(new Vector3(-5,.5,0), gun.computeWorldMatrix(true))
+    //     const normalizedV = { x: targetPos.x - forwardPos.x, y: targetPos.y-forwardPos.y, z: targetPos.z - forwardPos.z}
+    //     createBullet(forwardPos, normalizedV)
+    //     // const bullet = createShape({diameter: .4}, forwardPos, "asd", "sphere")
+    //     // bullet.lookAt(targetPos,0,0,0)
+    //     // const agg = createAggregate(bullet, {mass:1}, "sphere")
+    //     // agg.body.applyImpulse(new Vector3(normalizedV.x*10, normalizedV.y*10, normalizedV.z*10), bullet.getAbsolutePosition())
+    //     // let intervalForward
+    //     // setInterval(() => {
+    //     //     agg.body.setLinearVelocity()
+    //     // }, 50);
+    //     // setTimeout(() => bullet.dispose(), 500)
+    // }, 1000)
+
 
     bylonUIInit()
     const cave = await importCustomModel("./models/cave.glb", true)
@@ -105,8 +131,7 @@ export async function createScene(_engine) {
     await importAnimations("walk_anim.glb") //1
     // await importAnimations("jump_anim.glb")
     await importAnimations("jump_new.glb")
-    await importAnimations("walkback_anim.glb")
-
+    await importAnimations("walkback_anim.glb");
 
 
     let sessionMode = getSelectedImmMode()
@@ -130,18 +155,6 @@ export async function createScene(_engine) {
   
     await scene.whenReadyAsync()
     create3DGuiManager(scene)
-    // const mainPanel = createMenuVTwo(scene, false)
-    // log(mainPanel);
-    // scene.onPointerDown = e=> {
-    //     const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity())
-    //     const pickInfo = scene.pickWithRay(ray)
-
-    //     if(pickInfo.hit){
-    //         mainPanel.position.y = pickInfo.pickedPoint.y + 1.7
-    //         mainPanel.node.lookAt(pickInfo.pickedPoint,0,0,0)
-    //         mainPanel.node.addRotation(0,Math.PI,0)
-    //     }
-    // }
     setState("GAME")
     checkPlayers() // avatarUrl of everyplayers
     checkSceneModels()
@@ -239,7 +252,7 @@ function initScene(_engine){
     // scene.createDefaultEnvironment()
     const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
 
-    createMat(scene, "swordMat", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
+    createMat(scene, "sword", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
     createRefbx(scene)
 
     return {scene, light, cam}
@@ -493,13 +506,15 @@ export function checkSceneModels(){
                 if(socketModel.type === "equipment"){
                     importCustomModel(socketModel.url).then( model => {        
                         const Root = model.meshes[0]
-                        model.meshes[1].material = scene.getMaterialByName("swordMat");
+                        const meshMat = scene.getMaterialByName(socketModel.modelName);
+                        if(meshMat) model.meshes[1].material = meshMat
                         if(socketModel.parentMeshId){
                             const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                             if(parentPlayer){
                                 parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
                             }
                         }
+                        model.meshes[1].name = `${socketModel.modelName}.${socketModel.parentMeshId}`
                         setMeshesVisibility(Root.getChildren(), socketModel.isVisible)
                         modelsInScene.push({...socketModel, mesh: Root})
                     }).catch(error => log(error))

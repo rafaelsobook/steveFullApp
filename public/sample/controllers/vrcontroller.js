@@ -1,9 +1,10 @@
 import { displayTxt } from "../createDisplay.js"
-import { importCustomModel, setMeshesVisibility, setMeshPos } from "../creations.js"
+import { createShape, importCustomModel, setMeshesVisibility, setMeshPos } from "../creations.js"
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel, openClosePanel } from "../guitool/gui3dtool.js"
 import { createButtonForHand } from "../guitool/guitool.js"
 import { createMenuVOne, createMenuVTwo, getMenuScreen } from "../guitool/vrui.js"
 import { getCharacter } from "../index.js"
+import { createAggregate } from "../physics/aggregates.js"
 import { emitMove, emitStop, getMyDetail, getSocket } from "../socket/socketLogic.js"
 const { Vector3,Color3,MeshBuilder,Space, Axis,StandardMaterial,WebXRFeatureName, WebXRHandJoint, GizmoManager, Quaternion} = BABYLON
 const log = console.log
@@ -41,7 +42,8 @@ export async function initVrStickControls(scene, xr){
                 let l_indxTip
                 let l_middleTip
                 let l_wrist
-
+                
+                let r_indxTip
                 let r_wrist
                 let leftJointMeshes = undefined
                 let rightJointMeshes = undefined
@@ -64,14 +66,14 @@ export async function initVrStickControls(scene, xr){
                         r_vrhand = hand.handMesh
                         rightJointMeshes = hand._jointMeshes
                         myChar.rHandMesh.isVisible = false
+                        r_indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)
                         r_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)                        
                     }
                     if(side === "left" && l_wrist === undefined && !leftJointMeshes) {  
                         l_vrhand = hand.handMesh 
                         leftJointMeshes = hand._jointMeshes
                         myChar.lHandMesh.isVisible = false             
-                        l_indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)
-                        
+                        l_indxTip = hand.getJointMesh(WebXRHandJoint.INDEX_FINGER_TIP)                        
                         // tipBx.parent = l_indxTip
                         l_middleTip = hand.getJointMesh(WebXRHandJoint.MIDDLE_FINGER_TIP)
                         l_wrist = hand.getJointMesh(WebXRHandJoint.WRIST)                        
@@ -121,7 +123,10 @@ export async function initVrStickControls(scene, xr){
                 let forwardDir = cam.getDirection(BABYLON.Vector3.Forward()).normalize();
                 let camPosInWorld = {x: cam.position.x, y: camPosY, z: cam.position.z}
 
+
                 let stopTimeOut
+                let reloadingTimeout // for setting back isRealoading to false
+                let isReloading = false // by default we are not reloading a bullet
                 scene.onBeforeRenderObservable.remove(rendererForHand)
                 rendererForHand = scene.onBeforeRenderObservable.add(() => {
                     const deltaT = scene.getEngine().getDeltaTime()/1000
@@ -208,12 +213,13 @@ export async function initVrStickControls(scene, xr){
                             camQuat: {x: camQ.x, y:camQ.y, z:camQ.z},
                             headDirection: {x: camFrontWorldPos.x, y: camFrontWorldPos.y, z: camFrontWorldPos.z}
                         })
-                    }
-        
-                    // text1.text = `lwristPosX: ${l_wrist.position.x} rWristPos: ${r_wrist.position.x}`
-                
-                    let indxAndMiddleDistance = Vector3.Distance(l_indxTip.position, l_middleTip.position)
+                    }        
                     
+                    let indxAndMiddleDistance = Vector3.Distance(l_indxTip.position, l_middleTip.position)
+
+                    let indxAndWristDist = Vector3.Distance(r_indxTip.position, r_wrist.position)
+                    let middleAndWristDist = Vector3.Distance(l_middleTip.position, l_wrist.position)
+
                     let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
                     let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
                     const cPos = myChar.mainBody.position
@@ -228,39 +234,67 @@ export async function initVrStickControls(scene, xr){
                     
                     // log(`distance from XRCamera ${parseFloat(distance)}`)
                     // log(distance)
-                    if(indxAndMiddleDistance <= 0.02){
-                        // cam.position.addInPlace(new Vector3(forwardDir.x*deltaT, 0, forwardDir.z*deltaT))
-                        // cam.position.x = myPos.x
-                        // cam.position.y = myChar.headBone.getAbsolutePosition().y
-                        // cam.position.z = myPos.z
-                        emitMove({
-                            _id: myChar._id,
-                            movement: { moveX: 0, moveZ: 1 },
-                            direction: {x:cPos.x + frontPos.x , y: cam.position.y, z:cPos.z + frontPos.z},
-                            camPosInWorld: false,
-                            // wristPos: { 
-                            //     left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
-                            //     right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
-                            // },
-                            controllerType: 'vr-hands'
-                        })
-                        clearTimeout(stopTimeOut)
-                        stopTimeOut = setTimeout(() => {
-                            emitStop({
-                                _id: myChar._id,
-                                movement: { moveX: 0, moveZ: 0 },
-                                loc: {x: cPos.x, y: cPos.y, z: cPos.z},
-                                direction: {x:cPos.x + frontPos.x , y: cam.position.y, z:cPos.z + frontPos.z},
-                                controllerType: 'vr-hands',
-                                camPosInWorld: false
-                            })
-                        }, 100)
-                        // cam.position.x = myPos.x
-                        // cam.position.y = myChar.headBone.getAbsolutePosition().y
-                        // cam.position.z = myPos.z
 
-                        // nameMesh.position = cam.getFrontPosition(1.5)
-                        // text1.text = `${myPos.x} ${myPos.z}`
+                    if(indxAndWristDist <= 0.09){
+                        const gunMesh = scene.getMeshByName(`gun.${myChar._id}`)                        
+                        
+                        if(gunMesh && gunMesh.isVisible){
+                            if(isReloading) return
+                            isReloading = true
+                            const respawnPos = Vector3.TransformCoordinates(new Vector3(-2.5,.5,0), gunMesh.computeWorldMatrix(true))
+                            const targDir = Vector3.TransformCoordinates(new Vector3(-15.5,.5,0), gunMesh.computeWorldMatrix(true))
+                            const normalizedV = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
+                            // const bx = createShape({size:.1, depth: .3}, respawnPos, "bxo")
+                            // bx.lookAt(new Vector3(targDir.x, targDir.y, targDir.z),0,0,0)
+                            // setTimeout(() => bx.dispose(), 100)
+                            
+                            socket.emit("trigger-bullet", { 
+                                pos: {x: respawnPos.x, y: respawnPos.y, z: respawnPos.z},
+                                dir: normalizedV,
+                                roomNum: getMyDetail().roomNum
+                            })
+                            
+                        
+                            clearTimeout(reloadingTimeout)
+                            reloadingTimeout = setTimeout(() => {
+                                isReloading = false
+                            }, 1500)
+                        }
+
+                        
+                        // const bx = createShape({size:.1, depth: .3}, respawnPos, "bxo")
+                        // bx.lookAt(new Vector3(targDir.x, targDir.y, targDir.z),0,0,0)
+                        // setTimeout(() => bx.dispose(), 100)
+                        // text1.text = `resPos: ${respawnPos.x, respawnPos.y, respawnPos.z}`
+                        
+                        return 
+                    }
+
+                    if(indxAndMiddleDistance <= 0.02){
+                       
+                        // emitMove({
+                        //     _id: myChar._id,
+                        //     movement: { moveX: 0, moveZ: 1 },
+                        //     direction: {x:cPos.x + frontPos.x , y: cam.position.y, z:cPos.z + frontPos.z},
+                        //     camPosInWorld: false,
+                        //     // wristPos: { 
+                        //     //     left: { x: lWristPos.x, y:lWristPos.y, z: lWristPos.z }, 
+                        //     //     right: { x: rWristPos.x, y:rWristPos.y, z: rWristPos.z } 
+                        //     // },
+                        //     controllerType: 'vr-hands'
+                        // })
+                        // clearTimeout(stopTimeOut)
+                        // stopTimeOut = setTimeout(() => {
+                        //     emitStop({
+                        //         _id: myChar._id,
+                        //         movement: { moveX: 0, moveZ: 0 },
+                        //         loc: {x: cPos.x, y: cPos.y, z: cPos.z},
+                        //         direction: {x:cPos.x + frontPos.x , y: cam.position.y, z:cPos.z + frontPos.z},
+                        //         controllerType: 'vr-hands',
+                        //         camPosInWorld: false
+                        //     })
+                        // }, 100)
+                    
                         return
                     }
 
@@ -376,9 +410,18 @@ export async function initVrStickControls(scene, xr){
             }
         })
     })
-
 }
 
+function createBullet(respawnPos, targetDirection){
+
+    const bullet = createShape({ diameter: .1}, {x:respawnPos.x, y:respawnPos.y, z: respawnPos.z}, "sphere", "sphere")
+    isReloading = true
+    let force = 10
+
+    const agg = createAggregate(bullet, {mass: .5}, "sphere")
+    const vel = new Vector3(targetDirection.x*force, targetDirection.y*force, targetDirection.z*force)
+    agg.body.applyImpulse(vel, bullet.getAbsolutePosition())
+}
 function inspectToString(obj) {
     
     // Custom replacer function for JSON.stringify to handle complex types

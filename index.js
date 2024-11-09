@@ -29,7 +29,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     log('Key or certificate file not found, setting httpsOptions to an empty object.')
 }
 
-let isHttps = false
+let isHttps = true
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)
@@ -49,6 +49,7 @@ rooms.set(1, {
             pos: {x:1.5,y:5,z:8},
             scale: {x:1,y:2,z:3},
             dir: {x:0,y:0,z:0},
+            modelName: "box"
         },
         {
             _id: `cylinder${createRandomID()}`,
@@ -57,6 +58,7 @@ rooms.set(1, {
             pos: {x:-2,y:0,z:-1},
             scale: {x:1,y:1,z:1},
             dir: {x:0,y:0,z:0},
+            modelName: "cylinder"
         },
        {
             _id: `sword${createRandomID()}`,
@@ -65,6 +67,7 @@ rooms.set(1, {
             pos: {x:2,y:1,z:4},
             scale: {x:1,y:1,z:1},
             dir: {x:0,y:0,z:0},
+            modelName: "sword"
        },
     //     {
     //         _id: "12asdf4",
@@ -202,7 +205,7 @@ io.on("connection", socket => {
     })
     socket.on("create-something", data => {
    
-        const {roomNum, entityType, entityUrl, entityId, parentMeshId} = data
+        const {roomNum, entityType, entityUrl, entityId, parentMeshId, modelName} = data
         const room = rooms.get(roomNum)
         if(!room) return log('room not found')
         const entity = room.sceneDescription.find(entity => entity._id === entityId)
@@ -216,6 +219,7 @@ io.on("connection", socket => {
             dir: {x:0,y:0,z:0},
             isVisible: true,
             parentMeshId,
+            modelName
         })
         io.to(roomNum).emit("scene-updated", room.sceneDescription)
     })
@@ -240,7 +244,10 @@ io.on("connection", socket => {
 
         io.to(data.roomNum).emit("moved-object", room.sceneDescription)
     })
-
+    socket.on("trigger-bullet", data => {
+        // const {roomNum, pos, dir } = data
+        io.to(data.roomNum).emit("trigger-bullet", data)
+    })
     // movements
     let fps = 20
     let spd = .3 / fps

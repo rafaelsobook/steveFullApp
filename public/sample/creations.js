@@ -184,7 +184,24 @@ export function createShape(opt, pos, name, meshType, _enableActionManager){
     if(_enableActionManager) mesh.actionManager = new ActionManager(getScene())
     return mesh
 }
+export function createBullet(respawnPos, targetDirection){
+    const bullet = createShape({ diameter: .1}, {x:respawnPos.x, y:respawnPos.y, z: respawnPos.z}, "sphere", "sphere")
+    let force = 10
 
+    const agg = createAggregate(bullet, {mass: .5}, "sphere")
+    const vel = new Vector3(targetDirection.x*force, targetDirection.y*force, targetDirection.z*force)
+    agg.body.applyImpulse(vel, bullet.getAbsolutePosition())
+    agg.body.setCollisionCallbackEnabled(true)
+    // agg.body.setCollisionEndedCallbackEnabled(true)
+    let observer = agg.body.getCollisionObservable().add( e => {
+        // log(e.type)
+        if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
+            const hitMesh = e.collidedAgainst.transformNode
+            if(hitMesh) log(hitMesh.name)
+            agg.body.setCollisionCallbackEnabled(false)
+        }
+    })
+}
 // tools
 export function createMat(scene, matName, _diffTex, _bumpTex, _roughTex){
     const mat = new StandardMaterial(matName ? matName : "material", scene)

@@ -12,8 +12,13 @@ let menuScreenVersion = undefined // 1, 2, 3 etc
 
 const myItemList = [
     {
-        id: randomNumToStr()
-    }
+        id: randomNumToStr(),
+        modelName: "sword"
+    },
+    {
+        id: randomNumToStr(),
+        modelName: "gun"
+    },
 ]
 
 export function getMenuScreen(){
@@ -39,40 +44,24 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     
     const leftPanel = createThreeDPanel(manager, 0.01, "normal", {x:0,y:0,z:0}, false, true)
     leftPanel.isVertical = false
+    const rightPanel = createThreeDPanel(manager, 0.02, "normal", {x:0,y:-.06,z:0}, false)
+    rightPanel.isVertical = false
 
+    mainPanel.addControl(leftPanel)
+    mainPanel.addControl(rightPanel)
+    rightPanel.updateLayout()
+    
+    // creating buttons for menu icons category
     const itemsBtn = createThreeDBtn(leftPanel, "ITEMS", 49, .06)
     const settingsBtn = createThreeDBtn(leftPanel, "SETTINGS", 49, .06)
 
-    itemsBtn.onPointerUpObservable.add(function(){
-        openCloseControls(itemsBtns, true)
-        openCloseControls(settingsBtns, false, () => {
-            settingsBtns.forEach(btn => rightPanel.removeControl(btn))
-            itemsBtns.forEach(btn => rightPanel.addControl(btn))
-        })
-        rightPanel.updateLayout()
-        log(rightPanel.children.length)
-    });  
-
-    settingsBtn.onPointerUpObservable.add(function(){
-        openCloseControls(itemsBtns, false)
-        openCloseControls(settingsBtns, true, () => {
-            itemsBtns.forEach(btn => rightPanel.removeControl(btn))
-            settingsBtns.forEach(btn => rightPanel.addControl(btn))
-        })
-        rightPanel.updateLayout()
-        log(rightPanel.children.length)
-    });  
-
-    const rightPanel = createThreeDPanel(manager, 0.02, "normal", {x:0,y:-.06,z:0}, false)
     for(var i = 0;i<myItemList.length;i++){
-
-        const holographBtn = createThreeDBtn(rightPanel, "Sword", 46, .05, "./images/sword.png")
-        holographBtn.id = myItemList[i].id
+        const {modelName, id} = myItemList[i]
+        const holographBtn = createThreeDBtn(rightPanel, modelName, 46, .05, `./images/${modelName}.png`)
+        holographBtn.id = id
         itemsBtns.push(holographBtn)
         rightPanel.updateLayout()
         holographBtn.onPointerUpObservable.add( evnt => {
-            
-            log(evnt)
             
             const myDetail = getMyDetail()
             const itemOnScene = getThingsInScene().find(itm =>itm._id === holographBtn.id)
@@ -81,28 +70,58 @@ export function createMenuVTwo(scene, _meshParent, _pos){
                 socket.emit("toggle-visibility", 
                 {
                     entityId: holographBtn.id,
-                    roomNum: myDetail.roomNum
+                    roomNum: myDetail.roomNum,
+                    modelName
                 })
                 return log("item already on scene do not create")
             }
             socket.emit("create-something",{
                 roomNum: myDetail.roomNum, 
                 entityType: "equipment", 
-                entityUrl: "./models/sword.glb", 
+                entityUrl: `./models/${modelName}.glb`, 
                 entityId: holographBtn.id, 
-                parentMeshId: myDetail._id
+                parentMeshId: myDetail._id,
+                modelName
             })
         })
     }
 
-    const soundBtn = createThreeDBtn(false, "Sound", 46, .05)
-    const arvrBtn = createThreeDBtn(false, "AR/VR", 46, .05)
-    settingsBtns = [soundBtn,arvrBtn]
-    rightPanel.isVertical = false
-
-    mainPanel.addControl(leftPanel)
-    mainPanel.addControl(rightPanel)
+    const soundBtn = createThreeDBtn(rightPanel, "Sound", 46, .05)
+    const arvrBtn = createThreeDBtn(rightPanel, "AR/VR", 46, .05)
+    settingsBtns.push(soundBtn)
+    settingsBtns.push(arvrBtn)
     rightPanel.updateLayout()
+
+    settingsBtns.forEach(btn => rightPanel.removeControl(btn))
+
+    itemsBtn.onPointerUpObservable.add(function(){
+        settingsBtns.forEach(btn => rightPanel.removeControl(btn))
+        itemsBtns.forEach(btn => rightPanel.addControl(btn))
+        rightPanel.updateLayout()
+        // openCloseControls(itemsBtns, true)
+        // openCloseControls(settingsBtns, false, () => {
+        //     settingsBtns.forEach(btn => rightPanel.removeControl(btn))
+        //     itemsBtns.forEach(btn => rightPanel.addControl(btn))
+        // })
+        // rightPanel.updateLayout()
+        // log(rightPanel.children.length)
+    });  
+
+    settingsBtn.onPointerUpObservable.add(function(){
+        itemsBtns.forEach(btn => rightPanel.removeControl(btn))
+        settingsBtns.forEach(btn => rightPanel.addControl(btn))
+        
+        rightPanel.updateLayout()
+        // openCloseControls(itemsBtns, false)
+        // openCloseControls(settingsBtns, true, () => {
+        //     itemsBtns.forEach(btn => rightPanel.removeControl(btn))
+        //     settingsBtns.forEach(btn => rightPanel.addControl(btn))
+        // })
+        // rightPanel.updateLayout()
+        // log(rightPanel.children.length)
+    });  
+
+
 
     return mainPanel
 }
