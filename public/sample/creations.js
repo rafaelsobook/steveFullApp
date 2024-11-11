@@ -172,8 +172,12 @@ export function createShape(opt, pos, name, meshType, _enableActionManager){
             mesh = MeshBuilder.CreateCapsule(meshName, opt)
             // mesh = MeshBuilder.CreateCapsule("asd", { height: 1, tessellation: 16, radius: 0.25})
         break
+        case "cylinder":
+            mesh = MeshBuilder.CreateCylinder(meshName, opt)
+        break
         case "ground":
             mesh = MeshBuilder.CreateGround(meshName, opt)
+            
         break
         default:
             mesh = MeshBuilder.CreateBox(meshName, opt)
@@ -190,15 +194,24 @@ export function createBullet(respawnPos, targetDirection){
 
     const agg = createAggregate(bullet, {mass: .5}, "sphere")
     const vel = new Vector3(targetDirection.x*force, targetDirection.y*force, targetDirection.z*force)
+    log(vel)
     agg.body.applyImpulse(vel, bullet.getAbsolutePosition())
     agg.body.setCollisionCallbackEnabled(true)
-    // agg.body.setCollisionEndedCallbackEnabled(true)
-    let observer = agg.body.getCollisionObservable().add( e => {
-        // log(e.type)
+   
+    agg.body.getCollisionObservable().add( e => {
+
         if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
             const hitMesh = e.collidedAgainst.transformNode
+            agg.body.setLinearDamping(1)
             if(hitMesh) log(hitMesh.name)
-            agg.body.setCollisionCallbackEnabled(false)
+            if(hitMesh.name.includes("ground")){
+                agg.body.setLinearDamping(14)
+                agg.body.setCollisionCallbackEnabled(false)
+            }
+            setTimeout(() => {
+                bullet.dispose()
+                agg.body.dispose()
+            }, 2500)
         }
     })
 }
@@ -245,7 +258,12 @@ export function createGizmo(scene, _meshToAttached, isPositionGizmo,isRotationGi
     
     return gizmoManager
 }
-
+export function createRefbx(scene){
+    const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
+    refbx.isVisible = false
+    refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
+    return refbx
+}
 export function randomNumToStr(){
     return Math.random().toLocaleString().split(".")[1]
 }

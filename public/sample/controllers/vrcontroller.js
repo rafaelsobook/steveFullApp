@@ -216,10 +216,7 @@ export async function initVrStickControls(scene, xr){
                     }        
                     
                     let indxAndMiddleDistance = Vector3.Distance(l_indxTip.position, l_middleTip.position)
-
-                    let indxAndWristDist = Vector3.Distance(r_indxTip.position, r_wrist.position)
-                    let middleAndWristDist = Vector3.Distance(l_middleTip.position, l_wrist.position)
-
+                    // let middleAndWristDist = Vector3.Distance(l_middleTip.position, l_wrist.position)
                     let forwardDirection = new Vector3(0, 0, 100); // Forward in local space
                     let frontPos = Vector3.TransformNormal(forwardDirection, cam.getWorldMatrix());
                     const cPos = myChar.mainBody.position
@@ -232,29 +229,28 @@ export async function initVrStickControls(scene, xr){
 
                     cam.position.y = myChar.headBone.getAbsolutePosition().y
                     
-                    // log(`distance from XRCamera ${parseFloat(distance)}`)
-                    // log(distance)
-
-                    if(indxAndWristDist <= 0.09){
+                    let indxAndWristDist = Vector3.Distance(r_indxTip.position, r_wrist.position)
+                    if(indxAndWristDist <= 0.1){
                         const gunMesh = scene.getMeshByName(`gun.${myChar._id}`)                        
                         
                         if(gunMesh && gunMesh.isVisible){
                             if(isReloading) return
                             isReloading = true
+
                             const respawnPos = Vector3.TransformCoordinates(new Vector3(-2.5,.5,0), gunMesh.computeWorldMatrix(true))
-                            const targDir = Vector3.TransformCoordinates(new Vector3(-15.5,.5,0), gunMesh.computeWorldMatrix(true))
-                            const normalizedV = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
+                            const targDir = Vector3.TransformCoordinates(new Vector3(-12,.5,0), gunMesh.computeWorldMatrix(true))
+                            // const normalizedV = new Vector3(targDir.x - respawnPos.x, targDir.y-respawnPos.y, targDir.z - respawnPos.z).normalize()
+                            const bulletDir = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
                             // const bx = createShape({size:.1, depth: .3}, respawnPos, "bxo")
                             // bx.lookAt(new Vector3(targDir.x, targDir.y, targDir.z),0,0,0)
                             // setTimeout(() => bx.dispose(), 100)
-                            
+                            log(bulletDir)
                             socket.emit("trigger-bullet", { 
                                 pos: {x: respawnPos.x, y: respawnPos.y, z: respawnPos.z},
-                                dir: normalizedV,
+                                dir: bulletDir,
                                 roomNum: getMyDetail().roomNum
                             })
                             
-                        
                             clearTimeout(reloadingTimeout)
                             reloadingTimeout = setTimeout(() => {
                                 isReloading = false

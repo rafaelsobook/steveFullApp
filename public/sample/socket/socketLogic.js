@@ -7,9 +7,9 @@ import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScen
 
 const { MeshBuilder, Vector3, Space, Quaternion, GizmoManager } = BABYLON
 const log = console.log
-const listElement = document.querySelector(".room-lists")
+const listElement = document.querySelector(".room-lists");
 
-let socket
+var socket
 let myDetail //_id, name, socketId, loc, roomNum
 let playersInServer = []
 let importedModelsInServer = []
@@ -34,12 +34,12 @@ listElement.addEventListener("click", e => {
     videoLobbyelem.style.display = "none"
   }, 7000)
 })
+
 export function getSocket() {
   return socket
 }
 
 export function initializeSocket() {
-  if (socket !== undefined) return
   // socket = io("https://steveapptcp.onrender.com/")
   socket = io("/")
 
@@ -85,7 +85,9 @@ export function initializeSocket() {
     if(!scene) return log("scene not ready")
     sceneDescriptionList.forEach( desc => {
       const modelAlreadyHere = importedModelsInServer.find(model => model._id === desc._id)
-      if(modelAlreadyHere) return
+      if(modelAlreadyHere) {
+        return checkSceneModels()
+      }
       importedModelsInServer.push(desc)
       checkSceneModels()
     })
@@ -108,12 +110,17 @@ export function initializeSocket() {
   socket.on("moved-object", sceneDescriptions => {
     const scene = getScene()
     if(!scene) return log("scene not ready")
+
     sceneDescriptions.forEach(modelData => {      
       const sceneModel = scene.getMeshById(modelData._id)
-      if(!sceneModel) return log(`model ${modelData._id} not found `)
+      if(!sceneModel) return
       sceneModel.position.x = modelData.pos.x
       sceneModel.position.y = modelData.pos.y
       sceneModel.position.z = modelData.pos.z
+      const description = importedModelsInServer.find(desc => desc._id === modelData._id)
+      if(description){
+        description.pos = modelData.pos
+      }
     })
   })
   socket.on("trigger-bullet", data => {
@@ -256,7 +263,14 @@ export function initializeSocket() {
   })
 
   socket.on('player-dispose', playerDetail => {
+    const scene = getScene()
     playerDispose(playerDetail)
+    scene.meshes.forEach(mesh => {
+      if(mesh.name.includes(playerDetail._id)){
+        log(`dispose this ${mesh.name}`)
+        log(`this mesh parent ${mesh.parent}`)
+      }
+    })
   })
 }
 

@@ -23,8 +23,6 @@ export async function main() {
     scene.render()
   })
   window.addEventListener('resize', e => engine.resize())
-
-  initKeyControls(scene)
 }
 
 export function getCharacter() {

@@ -29,7 +29,7 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     log('Key or certificate file not found, setting httpsOptions to an empty object.')
 }
 
-let isHttps = false
+let isHttps = true
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)
@@ -45,30 +45,96 @@ rooms.set(1, {
         {
             _id: `box${createRandomID()}`,
             type: "primitive",
+            shape: "ground",
+            shapeOpt: {width:10, height: 10},
+            materialInfo: { texture: "images/tex.png", uAndVScale: 12},
+            pos: {x:0,y:0,z:0},
+            scale: {x:10,y:10,z:10},
+            dir: {x:0,y:0,z:0},
+            rotQ: {x:0,y:0,z:0, w: 0},
+            physicsInfo: {enabled: true, physicsType: "box", mass: 0},
+            modelName: "ground",
+            isVisible: true,
+            hasGizmos: false,
+            parentMeshId: undefined
+        },
+        {
+            _id: `box${createRandomID()}`,
+            type: "primitive",
             shape: "box",
+            shapeOpt: { size: 1},
+            materialInfo: false,
             pos: {x:1.5,y:5,z:8},
             scale: {x:1,y:2,z:3},
             dir: {x:0,y:0,z:0},
-            modelName: "box"
+            rotQ: {x:0,y:0,z:0, w: 0},
+            physicsInfo: {enabled: true, physicsType: "box", mass: 0},
+            modelName: "box",
+            isVisible: true,
+            hasGizmos: true,
+            parentMeshId: undefined
         },
         {
             _id: `cylinder${createRandomID()}`,
             type: "primitive",
             shape: "cylinder",
+            shapeOpt: { diameter: 2 },
+            materialInfo: false,
             pos: {x:-2,y:0,z:-1},
             scale: {x:1,y:1,z:1},
             dir: {x:0,y:0,z:0},
-            modelName: "cylinder"
+            rotQ: {x:0,y:0,z:0, w: 0},
+            physicsInfo: {enabled: true, physicsType: "cylinder", mass: 0},
+            modelName: "cylinder",
+            isVisible: true,
+            hasGizmos: true,
+            parentMeshId: undefined
         },
        {
             _id: `sword${createRandomID()}`,
             type: "remoteurl",
             url: "./models/sword.glb",
+            materialInfo: false,
             pos: {x:2,y:1,z:4},
             scale: {x:1,y:1,z:1},
             dir: {x:0,y:0,z:0},
-            modelName: "sword"
+            rotQ: {x:0,y:0,z:0, w: 0},
+            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+            modelName: "sword",
+            isVisible: true,
+            hasGizmos: true,
+            parentMeshId: undefined
        },
+       {
+            _id: `cave${createRandomID()}`,
+            type: "remoteurl",
+            url: "./models/cave.glb",
+            materialInfo: false,
+            pos: {x:0,y:0,z:-5},
+            scale: {x:1,y:1,z:1},
+            dir: {x:0,y:0,z:0},
+            rotQ: {x:0,y:0.7071,z:0, w: 0.7071},
+            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+            modelName: "cave",
+            isVisible: true,
+            hasGizmos: true,
+            parentMeshId: undefined
+        },
+        {
+            _id: `cave${createRandomID()}`,
+            type: "remoteurl",
+            url: "./models/stair.glb",
+            materialInfo: false,
+            pos: {x:0,y:0,z:5},
+            scale: {x:1,y:1,z:1},
+            dir: {x:0,y:0,z:0},
+            rotQ: {x:0,y:1,z:0, w:6.1232e-17},
+            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+            modelName: "stair",
+            isVisible: true,
+            hasGizmos: true,
+            parentMeshId: undefined
+        },
     //     {
     //         _id: "12asdf4",
     //         type: "hlsurl",
@@ -186,6 +252,82 @@ io.on("connection", socket => {
             roomNum: roomNum,
             controller: undefined, //key//joystick//vr//teleport
             currentSpd: 1.3,
+
+            equipment: [
+                {
+                    id: generateUUID(),
+                    name: 'gun',
+                    type: 'equipment',
+                    model_url: './models/gun.glb',
+                    materialInfo: false,
+                //   thumbnail_url: './image/${modelnName}.png', // could be generated with blender
+                    offset: {
+                        parent : "wrist",// Same between left and right?
+                        position: {x: -0.02, y: -0.03, z:-0.08}, // relative to wrist
+                        scaling: .11, // uniform
+                        rotation: {x: 0.3118619785970446,y: -0.517518584933339, z: 0.6331840797317805, w: 0.48372982307105} // quaterion
+                    },
+                    actions: [
+                      {
+                        name: 'trigger-bullet',
+                        trigger: 'distance(${IndexTip.postion}, ${wrist.position}) <= 0.09',        
+                        respawn_offset: { x:-2.5, y:.5,z: 0 },
+                        target_offset: {x:-15.5, y:.5, z:0},
+                        pos : "${respawn_offset} transformed ${equipment.pos}",
+                        dir : "${pos} - ${target_offset}",
+                        emit: { pos: {}, dir: {}, roomNum: {} },
+                        resulting_action: {
+                            model: {meshType: "sphere", diameter: .1},
+                            mass: .5,
+                            force: 10,        
+                            // starting pos: <from message>, dir: <from message>,        
+                            // timeout: {1500, "${equipment.state.isReloading}=true" -> "${equipment.state.isReloading}=false"}
+                            collisioncallback: {
+                                // type: COLLISION_STARTED,
+                                action: 'console.log("${hitmesh.name")'
+                            }
+                        }
+                      }
+                    ]
+                },
+                {
+                    id: generateUUID(),
+                    name: 'sword',
+                    type: 'equipment',
+                    model_url: './models/sword.glb',
+                    materialInfo: { diffuse: "./textures/sword/sword.jpg", normal: "./textures/sword/swordnormal.jpg", normal: "./textures/sword/swordnormal.jpg", rough: "./textures/sword/swordrough.jpg"},
+                //   thumbnail_url: './image/${modelnName}.png', // could be generated with blender
+                    offset: {
+                        parent :"wrist",// Same between left and right?
+                        parentMeshId: "myDetail._id",
+                        position: {x: -0.02, y: -0.03, z:-0.08}, // relative to wrist
+                        scaling: .11, // uniform
+                        rotation: {x: 0.3118619785970446,y: -0.517518584933339, z: 0.6331840797317805, w: 0.48372982307105} // quaterion
+                    },
+                    actions: [                            
+                      {                                   
+                        name: 'trigger-bullet',
+                        trigger: 'distance(${IndexTip.postion}, ${wrist.position}) <= 0.09',        
+                        respawn_offset: { x:-2.5, y:.5,z: 0 },
+                        target_offset: {x:-15.5, y:.5, z:0},
+                        pos : "${respawn_offset} transformed ${equipment.pos}",
+                        dir : "${pos} - ${target_offset}",
+                        emit: { pos: {}, dir: {}, roomNum: {} },
+                        resulting_action: {
+                            model: {meshType: "sphere", diameter: .1},
+                            mass: .5,
+                            force: 10,        
+                            // starting pos: <from message>, dir: <from message>,        
+                            // timeout: {1500, "${equipment.state.isReloading}=true" -> "${equipment.state.isReloading}=false"}
+                            collisioncallback: {
+                                // type: COLLISION_STARTED,
+                                action: 'console.log("${hitmesh.name")'
+                            }
+                        }
+                      }
+                  ]
+                },
+            ]
         }
         socket.join(roomNum)
         room.players.push(playerDetail)
@@ -204,8 +346,8 @@ io.on("connection", socket => {
         // io.emit('players-details', players)
     })
     socket.on("create-something", data => {
-   
-        const {roomNum, entityType, entityUrl, entityId, parentMeshId, modelName} = data
+
+        const {roomNum, entityType,materialInfo, entityUrl, entityId, parentMeshId, modelName} = data
         const room = rooms.get(roomNum)
         if(!room) return log('room not found')
         const entity = room.sceneDescription.find(entity => entity._id === entityId)
@@ -214,8 +356,9 @@ io.on("connection", socket => {
             _id: entityId,
             type: entityType,// "equipment",
             url:  entityUrl, //"./models/sword.glb",
-            pos: {x:.1,y:0,z:-.06},
-            scale: {x:1,y:1,z:1},
+            materialInfo,
+            pos: {x:-0.02, y:-0.03, z:-0.08},
+            scale: {x:.11,y:.11,z:.11},
             dir: {x:0,y:0,z:0},
             isVisible: true,
             parentMeshId,
@@ -308,13 +451,6 @@ io.on("connection", socket => {
             }else log("player emit action not found")
         }
     })
-    // setInterval(() => {
-    //     for (const [key, value] of rooms) {
-    //         if (!value.players.length) return
-
-    //         io.to(key).emit("a-player-moved", value.players)
-    //     }
-    // }, 1000 / fps)
 
     // vr
     socket.on("moving-hands", data => {
@@ -347,13 +483,12 @@ io.on("connection", socket => {
             if (disconnectedPlayer) {
                 log(`${disconnectedPlayer.name} is disconnected`)
                 value.players = value.players.filter(pl => pl.socketId !== disconnectedPlayer.socketId)
-                value.sceneDescription = value.sceneDescription.filter(model => model.parentMeshId !== disconnectedPlayer.socketId)
+                value.sceneDescription = value.sceneDescription.filter(model => model.parentMeshId !== disconnectedPlayer._id)
                 io.to(key).emit("player-dispose", disconnectedPlayer)
             }
         }
         console.log(socket.id)
     })
-
 
     //  debugger
     socket.on('display-debug', data => {

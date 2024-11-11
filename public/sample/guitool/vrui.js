@@ -55,36 +55,66 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     const itemsBtn = createThreeDBtn(leftPanel, "ITEMS", 49, .06)
     const settingsBtn = createThreeDBtn(leftPanel, "SETTINGS", 49, .06)
 
-    for(var i = 0;i<myItemList.length;i++){
-        const {modelName, id} = myItemList[i]
-        const holographBtn = createThreeDBtn(rightPanel, modelName, 46, .05, `./images/${modelName}.png`)
+    // for(var i = 0;i<myItemList.length;i++){
+    //     const {modelName, id} = myItemList[i]
+    //     const holographBtn = createThreeDBtn(rightPanel, modelName, 46, .05, `./images/${modelName}.png`)
+    //     holographBtn.id = id
+    //     itemsBtns.push(holographBtn)
+    //     rightPanel.updateLayout()
+    //     holographBtn.onPointerUpObservable.add( () => {
+            
+    //         const myDetail = getMyDetail()
+    //         const itemOnScene = getThingsInScene().find(itm =>itm._id === holographBtn.id)
+    //         if(itemOnScene) {
+    //             log(itemOnScene)
+    //             socket.emit("toggle-visibility", 
+    //             {
+    //                 entityId: holographBtn.id,
+    //                 roomNum: myDetail.roomNum,
+    //                 modelName
+    //             })
+    //             return log("item already on scene do not create")
+    //         }
+    //         socket.emit("create-something",{
+    //             roomNum: myDetail.roomNum, 
+    //             entityType: "equipment", 
+    //             entityUrl: `./models/${modelName}.glb`, 
+    //             entityId: holographBtn.id, 
+    //             parentMeshId: myDetail._id,
+    //             modelName
+    //         })
+    //     })
+    // }
+    const myDetail = getMyDetail()
+    myDetail.equipment.forEach(equipment => {
+        const {id, name, type, model_url, offset} = equipment
+        const holographBtn = createThreeDBtn(rightPanel, name, 46, .05, `./images/${name}.png`)
         holographBtn.id = id
         itemsBtns.push(holographBtn)
         rightPanel.updateLayout()
-        holographBtn.onPointerUpObservable.add( evnt => {
+        holographBtn.onPointerUpObservable.add( () => {
             
-            const myDetail = getMyDetail()
-            const itemOnScene = getThingsInScene().find(itm =>itm._id === holographBtn.id)
+            const itemOnScene = getThingsInScene().find(itm =>itm._id === id)
             if(itemOnScene) {
-                log(itemOnScene)
                 socket.emit("toggle-visibility", 
                 {
-                    entityId: holographBtn.id,
+                    entityId: id,
                     roomNum: myDetail.roomNum,
-                    modelName
+                    modelName: name
                 })
                 return log("item already on scene do not create")
             }
             socket.emit("create-something",{
                 roomNum: myDetail.roomNum, 
-                entityType: "equipment", 
-                entityUrl: `./models/${modelName}.glb`, 
-                entityId: holographBtn.id, 
+                entityType: type, 
+                entityUrl: model_url, 
+                entityId: id, 
                 parentMeshId: myDetail._id,
-                modelName
+                modelName: name,
+                materialInfo: equipment.materialInfo
             })
         })
-    }
+    })
 
     const soundBtn = createThreeDBtn(rightPanel, "Sound", 46, .05)
     const arvrBtn = createThreeDBtn(rightPanel, "AR/VR", 46, .05)

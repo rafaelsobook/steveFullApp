@@ -1,5 +1,6 @@
 const {Quaternion,Color3, Space,Axis, SkyMaterial,Debug, BoneIKController, GizmoManager,Scalar,HavokPlugin,PhysicsAggregate,PhysicsShapeType, ActionManager,ExecuteCodeAction, StandardMaterial,Texture, MeshBuilder, Matrix, PointerEventTypes, Mesh, Animation, SceneLoader, Scene, Vector3, ArcRotateCamera, HemisphericLight } = BABYLON
 
+import { initKeyControls } from '../controllers/keycontroller.js'
 import { initJoyStick } from '../controllers/thumbController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
 import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
@@ -14,17 +15,11 @@ import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDet
 
 const log = console.log
 
-let currentAnimation
-let newAnimation
-let interval
-
-
 let players = []
 let modelsInScene = []
 
 // necessities to create player
 let scene
-let AvatarRoot
 let animationsGLB = []
 let vrHands = {
     right: undefined,
@@ -36,10 +31,6 @@ export function getScene() {
 }
 
 export async function createScene(_engine) {
-
-    log(Math.sin(0))
-    log(Math.cos(0))
-
     const {cam} = initScene(_engine)
 
     const plugin = new HavokPlugin(true, await HavokPhysics());
@@ -52,80 +43,9 @@ export async function createScene(_engine) {
         right: rHand,
         left: lHand
     }
-
-    // const gun = await importCustomModel("./models/gun.glb", true)
-    // gun.name = "gun"
-
-    // let num = 0.005
-    // scene.registerBeforeRender(() => {
-    //     // num+=.001
-    //     gun.addRotation(num,num,num)
-    // })
-    // setInterval(() => {
-    //     attachToGizmoArray(gun)
-    //     const forwardPos = Vector3.TransformCoordinates(new Vector3(-2,.5,0), gun.computeWorldMatrix(true))
-    //     const targetPos = Vector3.TransformCoordinates(new Vector3(-5,.5,0), gun.computeWorldMatrix(true))
-    //     const normalizedV = { x: targetPos.x - forwardPos.x, y: targetPos.y-forwardPos.y, z: targetPos.z - forwardPos.z}
-    //     createBullet(forwardPos, normalizedV)
-    //     // const bullet = createShape({diameter: .4}, forwardPos, "asd", "sphere")
-    //     // bullet.lookAt(targetPos,0,0,0)
-    //     // const agg = createAggregate(bullet, {mass:1}, "sphere")
-    //     // agg.body.applyImpulse(new Vector3(normalizedV.x*10, normalizedV.y*10, normalizedV.z*10), bullet.getAbsolutePosition())
-    //     // let intervalForward
-    //     // setInterval(() => {
-    //     //     agg.body.setLinearVelocity()
-    //     // }, 50);
-    //     // setTimeout(() => bullet.dispose(), 500)
-    // }, 1000)
-
-
     bylonUIInit()
-    const cave = await importCustomModel("./models/cave.glb", true)
-    cave.position.z -= 3
-    cave.addRotation(0,Math.PI/2,0)
-  
-    const caveAgg = createAggregate(cave, {mass:0}, "imported")
-    caveAgg.body.setCollisionCallbackEnabled(true)
-    caveAgg.body.getCollisionObservable().add(e => {
-        if(e.type === "COLLISION_CONTINUED"){
-            if(e.collidedAgainst.transformNode.name.includes("player")){
-                // e.collidedAgainst.applyImpulse(new Vector3(0,4000,0), e.collidedAgainst.transformNode.getAbsolutePosition()) // works
-                e.collidedAgainst.setLinearDamping(10)
-            }
-        }
-    })
 
-
-    const StairModel = await importCustomModel("./models/stair.glb")
-    const stair = StairModel.meshes[1]
-    stair.parent = null
-    StairModel.meshes[0].dispose()
-    stair.position.z += 4
-    stair.position.x += 1
-    stair.addRotation(0,Math.PI,0)
-
-    const stairAgg = createAggregate(stair, {mass:0}, "imported")
-    stairAgg.body.setCollisionCallbackEnabled(true)
-    stairAgg.body.getCollisionObservable().add(e => {
-        if(e.type === "COLLISION_CONTINUED"){
-            if(e.collidedAgainst.transformNode.name.includes("player")){
-                // e.collidedAgainst.applyImpulse(new Vector3(0,4000,0), e.collidedAgainst.transformNode.getAbsolutePosition()) // works
-                e.collidedAgainst.setLinearDamping(10)
-            }
-        }
-    })
-    
-    const ground = createGround(scene)
-    createAggregate(ground, scene, {mass:0})
-
-    const sphere = createShape({radius: .5},{ x:0, y: 2,z:0}, "sphere", "sphere", true)
-    const sphereAgg = createAggregate(sphere, {mass:1})
-
-
-    const wall = createShape({width: 4, height: 5, depth: 1},{ x:-4, y: 2,z:4}, "box", "box", true)
-    createAggregate(wall, {mass:0})
-    
-    const gm = createGizmo(scene, false, true, false, false, false)
+    createGizmo(scene, false, true, false, false, false)
 
     await importAnimations("idle_anim.glb")
     await importAnimations("walk_anim.glb") //1
@@ -138,21 +58,13 @@ export async function createScene(_engine) {
     // let sessionMode = "inline"
 
     const xrHelper = await scene.createDefaultXRExperienceAsync({
-        floorMeshes: [ground],
+        // floorMeshes: [ground],
         uiOptions: {
             sessionMode
         },
         disableTeleportation: true
     })
-    // xrHelper.pointerSelection.detach()
-    // const featureManager = xrHelper.baseExperience.featuresManager;
 
-    // featureManager.enableFeature(BABYLON.WebXRFeatureName.MOVEMENT, "latest", {
-    //     xrInput: xrHelper.input,
-    //     movementOrientationFollowsViewerPose: true,
-    //     // orientationPreferredHandedness: "left"
-    // })
-  
     await scene.whenReadyAsync()
     create3DGuiManager(scene)
     setState("GAME")
@@ -161,20 +73,8 @@ export async function createScene(_engine) {
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)
+    initKeyControls(scene)
     await initVrStickControls(scene, xrHelper)
-
-
-    // setInterval(() => {
-    //     checkSceneModels()
-    // }, 1000)
-
-    const decimalMaterial = new StandardMaterial('decimal', scene)
-    decimalMaterial.diffuseTexture = new Texture('./images/dragon.png', scene)
-    decimalMaterial.emissiveTexture = new Texture('./images/dragon.png', scene)
-    decimalMaterial.diffuseTexture.hasAlpha = true
-    decimalMaterial.emissiveTexture.hasAlpha = true
-    decimalMaterial.zOffset = -2
-
 
     scene.registerBeforeRender(() => {      
         const deltaT = _engine.getDeltaTime() / 1000
@@ -252,9 +152,6 @@ function initScene(_engine){
     // scene.createDefaultEnvironment()
     const light = new HemisphericLight('light', new Vector3(0, 10, 0), scene)
 
-    createMat(scene, "sword", "./textures/sword/sword.jpg", "./textures/sword/swordnormal.jpg", "./textures/sword/swordrough.jpg")
-    createRefbx(scene)
-
     return {scene, light, cam}
 }
 function importAnimations(animationGLB, _scene) {
@@ -265,23 +162,6 @@ function importAnimations(animationGLB, _scene) {
             });
             animationsGLB.push(result.animationGroups[0]);
         });
-}
-
-function* animationBlending(fromAnim, fromAnimSpeedRatio, toAnim, toAnimSpeedRatio, repeat, speed) {
-    let currentWeight = 1;
-    let newWeight = 0;
-    fromAnim.stop();
-    toAnim.play(repeat);
-    fromAnim.speedRatio = fromAnimSpeedRatio;
-    toAnim.speedRatio = toAnimSpeedRatio;
-    while (newWeight < 1) {
-        newWeight += speed;
-        currentWeight -= speed;
-        toAnim.setWeightForAllAnimatables(newWeight);
-        fromAnim.setWeightForAllAnimatables(currentWeight);
-        yield;
-    }
-    currentAnimation = toAnim;
 }
 
 export function blendAnimv2(pl, toAnim, _anims, isLooping, afterEndDetail, _currentPlayingAnim) {
@@ -383,7 +263,7 @@ export function checkSceneModels(){
     const sceneDescription = getAllImportedModelsInSocket()
     if (sceneDescription.length) {
         sceneDescription.forEach(socketModel => {
-            const {pos,scale, _id} = socketModel
+            const {pos,scale,rotQ, _id,physicsInfo, materialInfo} = socketModel
             const modelAlreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
             if (modelAlreadyHere) {                
                 if(socketModel.parentMeshId){
@@ -463,32 +343,31 @@ export function checkSceneModels(){
                     modelsInScene.push({...socketModel, mesh: TV})
                 }    
                 if(socketModel.type === "primitive"){
-                    let model
-                    let error=false
-                    switch(socketModel.shape){
-                        case "box":
-                        model = MeshBuilder.CreateBox(socketModel.shape, { height: 2 }, scene)
-                        break
-                        case "cylinder":
-                        model = MeshBuilder.CreateCylinder(socketModel.shape, { diameter: 2 }, scene)
-                        break
-                        default:
-                        log("unsupported shape ", socketModel)
-                        error = true
-                        break
+                    const model = createShape(socketModel.shapeOpt, socketModel.pos,socketModel.modelName, socketModel.shape)
+        
+                    if(!model) return log("error")
+                    if(materialInfo){
+                        const mat = createMat(scene, socketModel.modelName, materialInfo.texture)
+                        mat.diffuseTexture.uScale = materialInfo.uAndVScale
+                        mat.diffuseTexture.vScale = materialInfo.uAndVScale
+                        model.material = mat
                     }
-                    if(error) return
+                    
             
                     model.position = new Vector3(pos.x,pos.y,pos.z)
                     model.scaling = new Vector3(scale.x,scale.y,scale.z)
                     model.id = _id
     
-                    attachToGizmoArray(model)
+                    if(socketModel.hasGizmos) attachToGizmoArray(model)
                     modelsInScene.push({...socketModel, mesh: model})
+     
+                    if(physicsInfo.enabled){
+                        const agg = createAggregate(model, {mass: physicsInfo.mass}, physicsInfo.physicsType)
+                        agg.body.disablePreStep = false
+                    }
                 // rotation implement here
                 }
                 if(socketModel.type === "remoteurl"){
-                    log("importing model ")
                     importCustomModel(socketModel.url).then( avatar => {        
                         const Root = avatar.meshes[0]
                         const mainMesh = avatar.meshes[1]
@@ -497,17 +376,28 @@ export function checkSceneModels(){
             
                         mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
                         mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
+                        if(rotQ) mainMesh.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z, rotQ.w)
                         attachToGizmoArray(mainMesh)
                         mainMesh.id = socketModel._id
                         modelsInScene.push({...socketModel, mesh: mainMesh})
                         // lookAr direction here
+
+                        if(physicsInfo.enabled){
+                            const agg = createAggregate(mainMesh, {mass: physicsInfo.mass}, physicsInfo.physicsType)
+                            agg.body.disablePreStep = false
+                        }
                     })
                 }
                 if(socketModel.type === "equipment"){
+                    // log(`creating ... `, socketModel)
                     importCustomModel(socketModel.url).then( model => {        
+       
                         const Root = model.meshes[0]
-                        const meshMat = scene.getMaterialByName(socketModel.modelName);
-                        if(meshMat) model.meshes[1].material = meshMat
+              
+                        if(materialInfo){
+                            model.meshes[1].material = createMat(scene, socketModel.modelName, materialInfo.diffuse, materialInfo.normal,materialInfo.rough)
+                        }
+                    
                         if(socketModel.parentMeshId){
                             const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                             if(parentPlayer){
@@ -530,10 +420,8 @@ export function getThingsInScene(){
     return modelsInScene
 }
 export function playerDispose(playerDetail) {
-    log(playerDetail)
     const playerToDispose = players.find(pl => pl._id === playerDetail._id)
     if (playerToDispose) {
-        log(playerToDispose)
         playerToDispose.anims.forEach(anim => anim.dispose())
         playerToDispose.mainBody?.getChildren()[0].dispose()
         playerToDispose.mainBody?.dispose()
@@ -545,6 +433,13 @@ export function playerDispose(playerDetail) {
         playerToDispose.lHandMesh?.dispose()
 
         players = players.filter(pl => pl._id !== playerToDispose._id)
+    }
+}
+export function disposeModelInScene(parentMeshId){
+    const modelToDispose = modelsInScene.find(model => model.parentMeshId === parentMeshId)
+    if(modelToDispose){
+        log("there is model to dispose")
+
     }
 }
 
@@ -565,15 +460,7 @@ function createGround(scene){
 
     return ground
 }
-function createRefbx(scene){
-    const refbx = MeshBuilder.CreateBox("refbx", {height: 2, size: .5}, scene)
-    const head = MeshBuilder.CreateBox("refbx", {size: .66}, scene)
-    head.parent = refbx
-    head.position = new Vector3(0,.9,.3)
-    refbx.isVisible = false
-    head.isVisible = false
-    refbx.rotationQuaternion = Quaternion.FromEulerVector(refbx.rotation)
-}
+
 
 function createHandMat(scene, isLight){
     var handMat = new StandardMaterial("handMat", scene);
@@ -625,10 +512,6 @@ function createHandMat(scene, isLight){
     // skyMaterial.rayleigh = 2; // Adjust the scattering of light
 
     // skybox.material = skyMaterial;
-
-    // AvatarRoot = await loadAvatarContainer(scene, _chosenAvatar.avatarUrl, SceneLoader)
-
-
 
     // scene.onPointerObservable.add((e) => {
     //     if (e.type === PointerEventTypes.POINTERDOWN) {
@@ -693,6 +576,12 @@ function createHandMat(scene, isLight){
     //             normal,
     //             // size: decalSize,
     //         })
+            // const decimalMaterial = new StandardMaterial('decimal', scene)
+            // decimalMaterial.diffuseTexture = new Texture('./images/dragon.png', scene)
+            // decimalMaterial.emissiveTexture = new Texture('./images/dragon.png', scene)
+            // decimalMaterial.diffuseTexture.hasAlpha = true
+            // decimalMaterial.emissiveTexture.hasAlpha = true
+            // decimalMaterial.zOffset = -2
     //         decal.material = decimalMaterial
     //     }
     // ))

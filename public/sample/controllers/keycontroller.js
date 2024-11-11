@@ -1,5 +1,7 @@
+import { createRefbx } from "../creations.js"
 import { getCharacter } from "../index.js"
 import { emitAction, emitMove, emitStop, getMyDetail } from "../socket/socketLogic.js"
+
 const {Vector3} = BABYLON
 const log = console.log
 
@@ -10,8 +12,9 @@ let cPos
 let tPos
 
 export function initKeyControls(scene) {
-    const btf = scene.getMeshByName("btf")
-    const refbx = scene.getMeshByName("refbx")
+    
+    const refbx = createRefbx(scene)
+
     window.addEventListener("keydown", e => {
         const cam = scene.getCameraByName("cam")
         const keypressed = e.key.toLowerCase()

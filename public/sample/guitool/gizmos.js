@@ -5,32 +5,30 @@ const log = console.log
 
 
 let gm
-let selectedMeshWithGizmo
 
 export function setGizmo(_gizmoManager, scene){
     if(gm !== undefined) return console.log("you already have a gizmo would you like to set 2 gizmos ?")
     gm = _gizmoManager
     
     gm.gizmos.positionGizmo.xGizmo.dragBehavior.onDragEndObservable.add( event => {
-        onGizmoMoved(event, "position")
+        onGizmoMoved()
     });
     gm.gizmos.positionGizmo.yGizmo.dragBehavior.onDragEndObservable.add( event => {
-        onGizmoMoved(event, "position")
+        onGizmoMoved()
     });
     gm.gizmos.positionGizmo.zGizmo.dragBehavior.onDragEndObservable.add( event => {
-        onGizmoMoved(event, "position")
+        onGizmoMoved()
     });
 
-    changeGizmo()
+    changeGizmo(true)
     scene.onPointerObservable.add((evt) => {
         
         if(evt.type === BABYLON.PointerEventTypes.POINTERDOWN){
             if(!evt.pickInfo.hit) return
             const pickedMesh = evt.pickInfo.pickedMesh
-            if(pickedMesh && gm.attachableMeshes){
-                selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
-                if(!selectedMeshWithGizmo) changeGizmo(false) // hide gizmo if the mesh has no gizmo attached
-                    
+            if(pickedMesh && gm.attachableMeshes){                
+                let selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
+                if(!selectedMeshWithGizmo) return changeGizmo(false) // hide gizmo if the mesh has no gizmo attached
                 changeGizmo(true)                
             }
         }
@@ -65,26 +63,17 @@ export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo,
 
 
 // tools
-function onGizmoMoved(event, type) {
-
-    if (selectedMeshWithGizmo) {
-        // log(selectedMeshWithGizmo.id);
+function onGizmoMoved() {
+   
+    if(gm.attachedMesh){
         const socket = getSocket() 
-        const pos = selectedMeshWithGizmo.position
-        const rot = selectedMeshWithGizmo.rotation
+        const pos = gm.attachedMesh.position
+        const rot = gm.attachedMesh.rotation
         socket.emit("moved-object", {
             pos: {x: pos.x,y:pos.y,z:pos.z},
             rot: {x: rot.x,y:rot.y,z:rot.z},
-            _id: selectedMeshWithGizmo.id,
+            _id: gm.attachedMesh.id,
             roomNum: getMyDetail().roomNum
         })
-        // // Get the mesh's transformation values
-        // const position = mesh.position;
-        // const rotation = mesh.rotation;
-        // const scale = mesh.scaling;
-
-        // log(`Position: ${position}`);
-        // log(`Rotation: ${rotation}`);
-        // log(`Scale: ${scale}`);
     }
 }
