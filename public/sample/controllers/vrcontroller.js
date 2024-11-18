@@ -230,7 +230,7 @@ export async function initVrStickControls(scene, xr){
                     cam.position.y = myChar.headBone.getAbsolutePosition().y
                     
                     let indxAndWristDist = Vector3.Distance(r_indxTip.position, r_wrist.position)
-                    if(indxAndWristDist <= 0.1){
+                    if(indxAndWristDist <= 0.17){
                         const gunMesh = scene.getMeshByName(`gun.${myChar._id}`)                        
                         
                         if(gunMesh && gunMesh.isVisible){

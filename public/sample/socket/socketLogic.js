@@ -38,10 +38,30 @@ listElement.addEventListener("click", e => {
 export function getSocket() {
   return socket
 }
+// Function to extract the authToken from cookies
+function getCookie(name) {
+  const cookieString = document.cookie;
+  const cookies = cookieString.split('; ');
+  for (const cookie of cookies) {
+    const [key, value] = cookie.split('=');
+    
+    if (key === name) {
+      console.log(value)
+      return value;
+    }
+  }
+  console.log("cookie not found")
+  return null;
+}
 
 export function initializeSocket() {
+  console.log("initializing socket and getting the cookie")
   // socket = io("https://steveapptcp.onrender.com/")
-  socket = io("/")
+  socket = io('/', {
+    auth: {
+      authToken: getCookie('authToken'),
+    },
+  });
 
   socket.on('room-size', roomLength => {
     for (var i = 0; i < roomLength; i++) {

@@ -4,14 +4,20 @@ const fs = require('fs')
 const path = require("path")
 const express = require("express")
 const app = express()
+const bodyParser = require('body-parser');
+const cookieParser = require('cookie-parser');
+
 const config = require('./config')
 const { Server } = require("socket.io")
+const {login} = require("./login.js")
 
 const PORT = process.env.PORT || config.port
 const log = console.log
 const { generateUUID, createRandomID} = require("./tools.js");
+const { ok } = require('assert');
 
-
+app.use(cookieParser());
+app.use(bodyParser.json());
 // HTTPS options (loading the SSL certificate and key)
 let httpsOptions = {}
 
@@ -29,13 +35,27 @@ if (fs.existsSync(keyPath) && fs.existsSync(certPath)) {
     log('Key or certificate file not found, setting httpsOptions to an empty object.')
 }
 
-let isHttps = false
+let isHttps = config.isHttps
 let server
 if (isHttps) {
     server = https.createServer(httpsOptions, app)
 } else {
     server = http.createServer(app)
 }
+
+const authTokenToUser = new Map()
+function getUser(req){
+    
+    log("cookies... ", req.cookies, typeof req.cookies)
+    const authToken = req.cookies.authToken 
+    // Check if the authToken exists and is valid
+    const user = authTokenToUser.get(authToken);
+    if (!user) {
+      throw new Error("User not authorized")
+    }
+    return user
+}
+
 
 const rooms = new Map()
 rooms.set(1, {
@@ -90,23 +110,23 @@ rooms.set(1, {
             hasGizmos: true,
             parentMeshId: undefined
         },
-       {
-            _id: `sword${createRandomID()}`,
-            type: "remoteurl",
-            url: "./models/sword.glb",
-            materialInfo: false,
-            pos: {x:2,y:1,z:4},
-            scale: {x:1,y:1,z:1},
-            dir: {x:0,y:0,z:0},
-            rotQ: {x:0,y:0,z:0, w: 0},
-            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
-            modelName: "sword",
-            isVisible: true,
-            hasGizmos: true,
-            parentMeshId: undefined
-       },
-       {
-            _id: `cave${createRandomID()}`,
+        {
+                _id: `sword${createRandomID()}`,
+                type: "remoteurl",
+                url: "./models/sword.glb",
+                materialInfo: false,
+                pos: {x:2,y:1,z:4},
+                scale: {x:1,y:1,z:1},
+                dir: {x:0,y:0,z:0},
+                rotQ: {x:0,y:0,z:0, w: 0},
+                physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+                modelName: "sword",
+                isVisible: true,
+                hasGizmos: true,
+                parentMeshId: undefined
+        },
+        {
+            _id: `cave`,
             type: "remoteurl",
             url: "./models/cave.glb",
             materialInfo: false,
@@ -121,7 +141,7 @@ rooms.set(1, {
             parentMeshId: undefined
         },
         {
-            _id: `cave${createRandomID()}`,
+            _id: `stair`,
             type: "remoteurl",
             url: "./models/stair.glb",
             materialInfo: false,
@@ -206,9 +226,24 @@ let io = new Server(server, {
         methods: ["GET", "POST"]
     }
 })
-
+// WebSocket connection with auth validation
+io.use((socket, next) => {
+    log("validating ...")
+    const { auth } = socket.handshake;
+    const authToken = auth?.authToken;
+    log(authToken)
+    if (!authToken || !authTokenToUser.has(authToken)) {
+        log("not Authorized")
+        return next(new Error('Unauthorized'));
+    }
+    const user = authTokenToUser.get(authToken);
+    log(user)
+    socket.user = user
+    log("Authorized ! ", user)
+    next();
+});
 io.on("connection", socket => {
-
+    log("connected !")
     _socket = socket
     socket.emit("room-size", rooms.size)
 
@@ -237,6 +272,7 @@ io.on("connection", socket => {
                 y: 0,
                 z: 0 // facing forward
             },
+            // for VR hands and head
             vrHandsVisible: false,
             quat: undefined,
             wristPos: false,
@@ -249,10 +285,10 @@ io.on("connection", socket => {
             _actionName: undefined,
             _moving: false,
             avatarUrl,
-            roomNum: roomNum,
+            roomNum,
             controller: undefined, //key//joystick//vr//teleport
             currentSpd: 1.3,
-
+            // for vr items
             equipment: [
                 {
                     id: generateUUID(),
@@ -352,6 +388,7 @@ io.on("connection", socket => {
         if(!room) return log('room not found')
         const entity = room.sceneDescription.find(entity => entity._id === entityId)
         if(entity) return log("entity already made")
+
         room.sceneDescription.push({
             _id: entityId,
             type: entityType,// "equipment",
@@ -364,6 +401,7 @@ io.on("connection", socket => {
             parentMeshId,
             modelName
         })
+
         io.to(roomNum).emit("scene-updated", room.sceneDescription)
     })
     socket.on("toggle-visibility", data => {
@@ -545,6 +583,39 @@ io.on("connection", socket => {
         socket.leave(roomName);
         socket.broadcast.to(roomName).emit("leave");
     });
+})  
+// Endpoint: Login authenticate
+app.post('/login/authenticate', async (req, res) => {
+    const { username, password } = req.body;
+
+    // Validate input
+    if (!username || !password) {
+        return res.status(400).json({ status: 'invalid', message: 'Username and password are required' });
+    }
+
+    // Call custom validation function
+    const { isPasswordValid, account } = await login(username, password);
+
+    if (isPasswordValid) {
+        const authToken = generateUUID()
+        
+        // Set the session cookie
+        res.cookie('authToken', authToken, {
+            httpOnly: true, // Prevent JavaScript access
+            secure: false, // Set to true if using HTTPS
+            sameSite: 'strict', // Prevent CSRF
+            maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+        });
+        authTokenToUser.set(authToken, account)
+
+        res.status(200).json({ status: 'ok', message: 'Login successful' });
+    } else {
+        res.status(401).json({ status: 'invalid', message: 'Invalid username or password' });
+    }
+});
+app.get("/login/whoami", (req, res) => {
+    const user = getUser(req)
+    return res.json({message: "ok", status: 200, user})
 })
 app.get('/event/:roomid/', (req, res) => {
     const url = req.query.url
