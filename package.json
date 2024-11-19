@@ -17,10 +17,10 @@
   },
   "scripts": {
     "dev": "cross-env NODE_ENV=dev nodemon index.js",
-    "development": "cross-env NODE_ENV=development nodemon index.js",
-    "prod": "cross-env NODE_ENV=prod node index.js",
     "production": "cross-env NODE_ENV=production node index.js",
-    "admin-development": "NODE_ENV=development node admin.js",
+    "steve-dev": "cross-env NODE_ENV=steve-dev nodemon index.js",
+    "steve-prod": "cross-env NODE_ENV=steve-prod node index.js",
+    "admin-steve-dev": "NODE_ENV=steve-dev node admin.js",
     "admin-dev": "NODE_ENV=dev node admin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
