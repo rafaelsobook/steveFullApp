@@ -2,7 +2,29 @@ const axios = require("axios");
 const Papa = require("papaparse");
 const bcrypt = require("bcrypt");
 const { log } = console;
-const { GITHUB_TOKEN, REPO_OWNER, REPO_NAME, FILE_PATH, BRANCH } = require("./config");
+const encryptor = require('./encryption');
+const { 
+    ENCRYPTED_GITHUB_TOKEN, 
+    REPO_OWNER, 
+    REPO_NAME, 
+    FILE_PATH, 
+    BRANCH 
+} = require("./config");
+
+let GITHUB_TOKEN;
+
+try {
+    if (!ENCRYPTED_GITHUB_TOKEN) {
+        throw new Error('ENCRYPTED_GITHUB_TOKEN is not configured');
+    }
+    GITHUB_TOKEN = encryptor.decrypt(ENCRYPTED_GITHUB_TOKEN);
+    if (!GITHUB_TOKEN) {
+        throw new Error('Failed to decrypt GITHUB_TOKEN');
+    }
+} catch (error) {
+    console.error('Error initializing GitHub token:', error.message);
+    process.exit(1);
+}
 
 // Function to get the file content from GitHub
 async function getFileContent() {
@@ -53,36 +75,30 @@ async function updateFileOnGitHub(content, sha) {
 }
 
 // Function to hash passwords
-async function hashPasswords(csvData) {
-  log(`Hashing ${csvData.length} rows`);
-  return Promise.all(
-    csvData.map(async (row) => {
-      row.hash = await bcrypt.hash(row.password, 10);
-      return row;
-    })
-  );
+// async function hashPasswords(csvData) {
+//   log(`Hashing ${csvData.length} rows`);
+//   return Promise.all(
+//     csvData.map(async (row) => {
+//       row.hash = await bcrypt.hash(row.password, 10);
+//       return row;
+//     })
+//   );
+// }
+
+async function hashPassword(password) {
+  try {
+      const hashedPassword = await bcrypt.hash(password, 10);
+      return hashedPassword;
+  } catch (error) {
+      console.error('Error hashing password:', error);
+      throw error;
+  }
 }
 
 // Main function to execute the process
-async function main() {
+async function saveChanges(hashedCsvData) {
   try {
     log("Starting the process...");
-
-    // Step 1: Get file content from GitHub
-    const csvData = await getFileContent();
-    if (!csvData) throw new Error("Failed to retrieve file content.");
-
-    const csvParsed = Papa.parse(csvData, { header: true });
-
-    // Add new user
-    csvParsed.data.push({
-      id: (csvParsed.data.length + 1).toString(),
-      username: "steve",
-      password: "asdasd",
-    });
-
-    // Hash passwords
-    const hashedCsvData = await hashPasswords(csvParsed.data);
 
     // Convert back to CSV format
     const csvContent = Papa.unparse(hashedCsvData);
@@ -105,40 +121,45 @@ async function main() {
     await updateFileOnGitHub(csvContent, sha);
     log("Process completed successfully.");
 
-    // Test login
-    login("steve", "asdasd");
   } catch (error) {
-    log("Error in main function:", error.message);
+    log("Error in saveChanges function:", error.message);
   }
+}
+async function loadUsers() {
+  const csvData = await getFileContent();
+  if (!csvData) {
+      throw new Error("Failed to retrieve file content.");
+  }
+
+  const accountsCsv = Papa.parse(csvData, { header: true });
+  const accounts = accountsCsv.data.filter(row => 
+    Object.values(row).some(value => value !== '' && value !== undefined)
+  );
+  return accounts
 }
 
 // Function for user login
 async function login(username, password) {
-    log(`${username} logging in...`);
+  log(`${username} logging in...`);
   try {
-    const csvData = await getFileContent();
-    if (!csvData) {
-        throw new Error("Failed to retrieve file content.");
-    }
+      const users = await loadUsers();
+      const account = users.find(acc => acc.username === username);
 
-    const accountsCsv = Papa.parse(csvData, { header: true });
-    const account = accountsCsv.data.find((acc) => acc.username === username);
+      if (!account) {
+          log("Account not found.");
+          return { isPasswordValid: false, account: undefined }
+      }
 
-    if (!account) {
-        log("Account not found.");
-        return { isPasswordValid: false, account: undefined }
-    }
-
-    const isPasswordValid = await bcrypt.compare(password, account.hash);
-    log(isPasswordValid ? "Login successful!" : "Invalid password.");
-    return { isPasswordValid, account }
+      const isPasswordValid = await bcrypt.compare(password, account.hash);
+      log(isPasswordValid ? "Login successful!" : "Invalid password.");
+      return { isPasswordValid, account }
 
   } catch (error) {
-    log("Error during login:", error.message);
-    return { isPasswordValid: false, account: undefined }
+      log("Error during login:", error.message);
+      return { isPasswordValid: false, account: undefined }
   }
 }
 
 module.exports = {
-    login
+    login, loadUsers, hashPassword, saveChanges
 }

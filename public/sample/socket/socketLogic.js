@@ -28,11 +28,11 @@ listElement.addEventListener("click", e => {
     avatarUrl: user.avatarUrl
   })
   document.querySelectorAll(".dropdown").forEach(elem => elem.style.display = "none")
-  const videoLobbyelem = document.getElementById("video-chat-lobby")
-  setTimeout(() => {
-    videoLobbyelem.style.pointerEvents = "none"
-    videoLobbyelem.style.display = "none"
-  }, 7000)
+  // const videoLobbyelem = document.getElementById("video-chat-lobby")
+  // setTimeout(() => {
+  //   videoLobbyelem.style.pointerEvents = "none"
+  //   videoLobbyelem.style.display = "none"
+  // }, 7000)
 })
 
 export function getSocket() {
@@ -41,6 +41,7 @@ export function getSocket() {
 // Function to extract the authToken from cookies
 function getCookie(name) {
   const cookieString = document.cookie;
+  console.log(cookieString)
   const cookies = cookieString.split('; ');
   for (const cookie of cookies) {
     const [key, value] = cookie.split('=');
@@ -51,15 +52,23 @@ function getCookie(name) {
     }
   }
   console.log("cookie not found")
+  // window.location.href = "/login/index.html"
   return null;
 }
 
 export function initializeSocket() {
   console.log("initializing socket and getting the cookie")
   // socket = io("https://steveapptcp.onrender.com/")
+  const authToken = getCookie('authToken');
+  if (!authToken) {
+    console.error('No auth token found');
+    // window.location.href = '/login/index.html';
+    return;
+  }
+  
   socket = io('/', {
     auth: {
-      authToken: getCookie('authToken'),
+      authToken: authToken,
     },
   });
 

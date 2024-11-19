@@ -43,7 +43,40 @@ if (isHttps) {
     server = http.createServer(app)
 }
 
-const authTokenToUser = new Map()
+const AUTH_FILE_PATH = path.join(__dirname, 'auth-tokens.json');
+
+// Initialize the Map
+const authTokenToUser = new Map();
+
+// Load auth tokens from file
+async function loadAuthTokens() {
+    try {
+        const data = fs.readFileSync(AUTH_FILE_PATH, 'utf8');  // Use readFileSync
+        const entries = JSON.parse(data);
+        entries.forEach(([key, value]) => {
+            authTokenToUser.set(key, value);
+        });
+        console.log('Auth tokens loaded from file');
+    } catch (error) {
+        if (error.code === 'ENOENT') {
+            console.log('No existing auth tokens file found, starting fresh');
+        } else {
+            console.error('Error loading auth tokens:', error);
+        }
+    }
+}
+
+// Save auth tokens to file
+async function saveAuthTokens() {
+    try {
+        const entries = Array.from(authTokenToUser.entries());
+        fs.writeFileSync(AUTH_FILE_PATH, JSON.stringify(entries, null, 2));  // Use writeFileSync
+        console.log('Auth tokens saved to file');
+    } catch (error) {
+        console.error('Error saving auth tokens:', error);
+    }
+}
+
 function getUser(req){
     
     log("cookies... ", req.cookies, typeof req.cookies)
@@ -526,6 +559,15 @@ io.on("connection", socket => {
             }
         }
         console.log(socket.id)
+        // // Clean up any room-specific data
+        // for (const [roomNum, room] of rooms.entries()) {
+        //     const playerIndex = room.players.findIndex(p => p.socketId === socket.id);
+        //     if (playerIndex !== -1) {
+        //         room.players.splice(playerIndex, 1);
+        //         io.to(roomNum).emit("player-left", socket.id);
+        //         break;
+        //     }
+        // }
     })
 
     //  debugger
@@ -588,35 +630,75 @@ io.on("connection", socket => {
 app.post('/login/authenticate', async (req, res) => {
     const { username, password } = req.body;
 
-    // Validate input
     if (!username || !password) {
         return res.status(400).json({ status: 'invalid', message: 'Username and password are required' });
     }
 
-    // Call custom validation function
     const { isPasswordValid, account } = await login(username, password);
 
     if (isPasswordValid) {
         const authToken = generateUUID()
         
-        // Set the session cookie
         res.cookie('authToken', authToken, {
-            httpOnly: true, // Prevent JavaScript access
-            secure: false, // Set to true if using HTTPS
-            sameSite: 'strict', // Prevent CSRF
-            maxAge: 24 * 60 * 60 * 1000, // 1 day in milliseconds
+            httpOnly: false,
+            secure: true,
+            sameSite: 'strict',
+            maxAge: 24 * 60 * 60 * 1000,
         });
-        authTokenToUser.set(authToken, account)
+        
+        authTokenToUser.set(authToken, account);
+        await saveAuthTokens(); // Save after updating the Map
 
         res.status(200).json({ status: 'ok', message: 'Login successful' });
     } else {
         res.status(401).json({ status: 'invalid', message: 'Invalid username or password' });
     }
 });
+
+app.get("/login/logout", (req, res) => {
+    try {
+        // Get the auth token from cookies
+        const authToken = req.cookies.authToken;
+        
+        // Remove from the Map if it exists
+        if (authToken) {
+            authTokenToUser.delete(authToken);
+            // Save the updated tokens
+            saveAuthTokens();
+        }
+        
+        // Clear the cookie
+        res.clearCookie('authToken', {
+            httpOnly: false,
+            secure: true,
+            sameSite: 'strict'
+        });
+        
+        res.status(200).json({ 
+            message: "Logged out successfully", 
+            status: 200 
+        });
+    } catch (error) {
+        console.error('Logout error:', error);
+        res.status(500).json({ 
+            message: "Error during logout", 
+            status: 500 
+        });
+    }
+});
+
 app.get("/login/whoami", (req, res) => {
-    const user = getUser(req)
-    return res.json({message: "ok", status: 200, user})
-})
+    try {
+        const user = getUser(req);
+        return res.json({ message: "ok", status: 200, user });
+    } catch (error) {
+        return res.status(401).json({ 
+            message: "Not authenticated", 
+            status: 401 
+        });
+    }
+});
+
 app.get('/event/:roomid/', (req, res) => {
     const url = req.query.url
     const roomid = req.params.roomid
@@ -625,4 +707,6 @@ app.get('/event/:roomid/', (req, res) => {
     io.to(parseInt(roomid)).emit("scene-updated", {roomid, url})
 })
 
-server.listen(PORT, () => log("TCP server is on ", PORT))
+loadAuthTokens().then(() => {
+    server.listen(PORT, () => log("TCP server is on ", PORT));
+});
