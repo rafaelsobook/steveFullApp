@@ -65,7 +65,7 @@
 
         if (response.ok) {
           // Authentication successful, redirect to sample page
-          window.location.href = '/sample/index.html';
+          window.location.href = '/sample/index.html?room=1';
         } else {
           // Stay on login page
           console.log('Not authenticated');
@@ -109,7 +109,7 @@
       if (response.ok && result.status === 'ok') {
         messageElement.textContent = 'Login successful!';
         messageElement.style.color = 'green';
-        window.location.href = "/sample/index.html";
+        window.location.href = "/sample/index.html?room=1";
       } else {
         messageElement.textContent = 'Invalid username or password.';
         messageElement.style.color = 'red';

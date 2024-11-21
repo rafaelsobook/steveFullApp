@@ -6,5 +6,6 @@ module.exports = {
   REPO_NAME: "users",
   FILE_PATH: "users.csv",
   BRANCH: "main",
-  encryptionKey: "1c55503d36a7a1a735eec22c59e72a41014387be0c502d18ac36854d3b931f97"
+  encryptionKey: "1c55503d36a7a1a735eec22c59e72a41014387be0c502d18ac36854d3b931f97",
+  ROOM_DIR: "room"
 };

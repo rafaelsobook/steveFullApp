@@ -1,13 +1,13 @@
 const axios = require("axios");
 const Papa = require("papaparse");
-const bcrypt = require("bcrypt");
+
 const { log } = console;
 const encryptor = require('./encryption');
 const { 
     ENCRYPTED_GITHUB_TOKEN, 
     REPO_OWNER, 
     REPO_NAME, 
-    FILE_PATH, 
+    ROOM_DIR, 
     BRANCH 
 } = require("./config");
 
@@ -27,9 +27,9 @@ try {
 }
 
 // Function to get the file content from GitHub
-async function getFileContent() {
+async function getFileContent(roomId) {
   log("Retrieving file content from GitHub...");
-  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`;
+  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ROOM_DIR}/${roomId}.json?ref=${BRANCH}`;
   try {
     const response = await axios.get(url, {
       headers: {
@@ -44,11 +44,10 @@ async function getFileContent() {
     throw error;
   }
 }
-
 // Function to update the file on GitHub
-async function updateFileOnGitHub(content, sha) {
+async function updateFileOnGitHub(content, sha, roomId) {
   log("Updating file on GitHub...");
-  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+  const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ROOM_DIR}/${roomId}.json?ref=${BRANCH}`;
   const encodedContent = Buffer.from(content).toString("base64");
 
   try {
@@ -73,39 +72,14 @@ async function updateFileOnGitHub(content, sha) {
     throw error;
   }
 }
-
-// Function to hash passwords
-// async function hashPasswords(csvData) {
-//   log(`Hashing ${csvData.length} rows`);
-//   return Promise.all(
-//     csvData.map(async (row) => {
-//       row.hash = await bcrypt.hash(row.password, 10);
-//       return row;
-//     })
-//   );
-// }
-
-async function hashPassword(password) {
-  try {
-      const hashedPassword = await bcrypt.hash(password, 10);
-      return hashedPassword;
-  } catch (error) {
-      console.error('Error hashing password:', error);
-      throw error;
-  }
-}
 // Main function to execute the process
-async function saveChanges(hashedCsvData) {
+async function saveChanges(newSceneDescription, roomId) {
   try {
     log("Starting the process...");
 
-    // Convert back to CSV format
-    const csvContent = Papa.unparse(hashedCsvData);
-    log(csvContent);
-
     log("Retrieving file SHA for update...");
     const fileInfoResponse = await axios.get(
-      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}?ref=${BRANCH}`,
+      `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ROOM_DIR}/${roomId}.json?ref=${BRANCH}`,
       {
         headers: {
           Authorization: `token ${GITHUB_TOKEN}`,
@@ -124,41 +98,22 @@ async function saveChanges(hashedCsvData) {
     log("Error in saveChanges function:", error.message);
   }
 }
-async function loadUsers() {
-  const csvData = await getFileContent();
-  if (!csvData) {
-      throw new Error("Failed to retrieve file content.");
-  }
 
-  const accountsCsv = Papa.parse(csvData, { header: true });
-  const accounts = accountsCsv.data.filter(row => 
-    Object.values(row).some(value => value !== '' && value !== undefined)
-  );
-  return accounts
-}
-
-// Function for user login
-async function login(username, password) {
-  log(`${username} logging in...`);
+async function getRoom(roomId) {
+  log(`fetching room Id ${roomId}`)
   try {
-      const users = await loadUsers();
-      const account = users.find(acc => acc.username === username);
-
-      if (!account) {
-          log("Account not found.");
-          return { isPasswordValid: false, account: undefined }
-      }
-
-      const isPasswordValid = await bcrypt.compare(password, account.hash);
-      log(isPasswordValid ? "Login successful!" : "Invalid password.");
-      return { isPasswordValid, account }
-
+    const roomData = await getFileContent(roomId);
+    if (!roomData) {
+        throw new Error("Failed to retrieve file content.");
+    }
+    log(`roomData `, roomData)
+    return { sceneDescription: roomData, limit:4, players: [] }
   } catch (error) {
-      log("Error during login:", error.message);
-      return { isPasswordValid: false, account: undefined }
+    log(error)
+    return  { sceneDescription: [], limit:4, players: [] }
   }
 }
 
 module.exports = {
-    login, loadUsers, hashPassword, saveChanges
+    saveChanges, getRoom
 }

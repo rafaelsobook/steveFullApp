@@ -14,6 +14,7 @@ const log = console.log
 export async function importCustomModel(_avatarUrl, removeParent){
     const scene = getScene()
     const Model = await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
+    
     if(removeParent){
         Model.meshes[1].parent = null
         Model.meshes[0].dispose()

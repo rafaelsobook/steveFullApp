@@ -1,5 +1,5 @@
 import {createBullet, importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
-import { getInitialPlayer } from "../dropdown.js"
+// import { getInitialPlayer } from "../dropdown.js"
 import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
 import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScene, getThingsInScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
@@ -7,33 +7,33 @@ import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScen
 
 const { MeshBuilder, Vector3, Space, Quaternion, GizmoManager } = BABYLON
 const log = console.log
-const listElement = document.querySelector(".room-lists");
+// const listElement = document.querySelector(".room-lists");
 
 var socket
 let myDetail //_id, name, socketId, loc, roomNum
 let playersInServer = []
 let importedModelsInServer = []
 
-listElement.addEventListener("click", e => {
+// listElement.addEventListener("click", e => {
 
-  const roomNumber = e.target.className.split(" ")[1]
-  if (!roomNumber) return
-  if (!socket) return log('socket not connected')
-  const user = getInitialPlayer()
-  if(!user) return console.warn("no selected avatar")
+//   const roomNumber = e.target.className.split(" ")[1]
+//   if (!roomNumber) return
+//   if (!socket) return log('socket not connected')
+//   const user = getInitialPlayer()
+//   if(!user) return console.warn("no selected avatar")
 
-  socket.emit('joinRoom', {
-    name: user.name,
-    roomNumber,
-    avatarUrl: user.avatarUrl
-  })
-  document.querySelectorAll(".dropdown").forEach(elem => elem.style.display = "none")
-  // const videoLobbyelem = document.getElementById("video-chat-lobby")
-  // setTimeout(() => {
-  //   videoLobbyelem.style.pointerEvents = "none"
-  //   videoLobbyelem.style.display = "none"
-  // }, 7000)
-})
+//   socket.emit('joinRoom', {
+//     name: user.name,
+//     roomNumber,
+//     avatarUrl: user.avatarUrl
+//   })
+//   document.querySelectorAll(".dropdown").forEach(elem => elem.style.display = "none")
+//   // const videoLobbyelem = document.getElementById("video-chat-lobby")
+//   // setTimeout(() => {
+//   //   videoLobbyelem.style.pointerEvents = "none"
+//   //   videoLobbyelem.style.display = "none"
+//   // }, 7000)
+// })
 
 export function getSocket() {
   return socket
@@ -56,7 +56,7 @@ function getCookie(name) {
   return null;
 }
 
-export function initializeSocket() {
+export function initializeRoom() {
   console.log("initializing socket and getting the cookie")
   // socket = io("https://steveapptcp.onrender.com/")
   const authToken = getCookie('authToken');
@@ -72,27 +72,28 @@ export function initializeSocket() {
     },
   });
 
-  socket.on('room-size', roomLength => {
-    for (var i = 0; i < roomLength; i++) {
-      const button = document.createElement("button")
-      button.className = `room-btn ${i + 1}`
-      switch (i + 1) {
-        case 1:
-            button.innerHTML = "Main"
-            break;
-        case 2:
-            button.innerHTML = "Virtual World Museum (Test)"
-            break;
-        case 3:
-            button.innerHTML = "Jordan's Memories"
-            break;
-        default:
-            button.innerHTML = `room ${i + 1}`
-            break;
-      }
-      listElement.append(button)
-    }
-  })
+  
+  // socket.on('room-size', roomLength => {
+  //   for (var i = 0; i < roomLength; i++) {
+  //     const button = document.createElement("button")
+  //     button.className = `room-btn ${i + 1}`
+  //     switch (i + 1) {
+  //       case 1:
+  //           button.innerHTML = "Main"
+  //           break;
+  //       case 2:
+  //           button.innerHTML = "Virtual World Museum (Test)"
+  //           break;
+  //       case 3:
+  //           button.innerHTML = "Jordan's Memories"
+  //           break;
+  //       default:
+  //           button.innerHTML = `room ${i + 1}`
+  //           break;
+  //     }
+  //     listElement.append(button)
+  //   }
+  // })
   socket.on("player-joined", data => {
     const { newPlayer, allPlayers, sceneDescription } = data
 
@@ -104,12 +105,13 @@ export function initializeSocket() {
     const state = getState()
     if (state === "GAME") return log("Already On Game")
     if (state === "LOBBY") {
-      listElement.style.display = "none"
+      // listElement.style.display = "none"
       setState("LOADING")
       main()
     }
   })
   socket.on('scene-updated', sceneDescriptionList => {
+    log("scene-updated ", sceneDescriptionList)
     const scene = getScene()
     if(!scene) return log("scene not ready")
     sceneDescriptionList.forEach( desc => {
@@ -290,7 +292,6 @@ export function initializeSocket() {
       }
     }
   })
-
   socket.on('player-dispose', playerDetail => {
     const scene = getScene()
     playerDispose(playerDetail)
@@ -300,6 +301,24 @@ export function initializeSocket() {
         log(`this mesh parent ${mesh.parent}`)
       }
     })
+  })
+
+  // Get the full URL
+  const urlParams = new URLSearchParams(window.location.search);
+  const roomNumber = urlParams.get('room');
+
+  if (!roomNumber) return console.log('roomNumber error ', roomNumber)
+  if (!socket) return console.log('socket not connected')
+  const user = {
+    name: "Belle",
+    // avatarName: "Belle",
+    avatarUrl: "https://models.readyplayer.me/661ddfc815d99b54c430940b.glb"
+  }
+
+  socket.emit('joinRoom', {
+    name: user.name,
+    roomNumber,
+    avatarUrl: user.avatarUrl
   })
 }
 

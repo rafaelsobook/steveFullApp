@@ -14,6 +14,7 @@ const {login} = require("./login.js")
 const PORT = process.env.PORT || config.port
 const log = console.log
 const { generateUUID, createRandomID} = require("./tools.js");
+const {getRoom} = require("./room.js")
 const { ok } = require('assert');
 
 app.use(cookieParser());
@@ -89,154 +90,156 @@ function getUser(req){
     return user
 }
 
+// async function getRooms(){
 
+// }
 const rooms = new Map()
-rooms.set(1, {
-    limit: 4,
-    players: [],
-    sceneDescription: [
-        {
-            _id: `box${createRandomID()}`,
-            type: "primitive",
-            shape: "ground",
-            shapeOpt: {width:10, height: 10},
-            materialInfo: { texture: "images/tex.png", uAndVScale: 12},
-            pos: {x:0,y:0,z:0},
-            scale: {x:10,y:10,z:10},
-            dir: {x:0,y:0,z:0},
-            rotQ: {x:0,y:0,z:0, w: 0},
-            physicsInfo: {enabled: true, physicsType: "box", mass: 0},
-            modelName: "ground",
-            isVisible: true,
-            hasGizmos: false,
-            parentMeshId: undefined
-        },
-        {
-            _id: `box${createRandomID()}`,
-            type: "primitive",
-            shape: "box",
-            shapeOpt: { size: 1},
-            materialInfo: false,
-            pos: {x:1.5,y:5,z:8},
-            scale: {x:1,y:2,z:3},
-            dir: {x:0,y:0,z:0},
-            rotQ: {x:0,y:0,z:0, w: 0},
-            physicsInfo: {enabled: true, physicsType: "box", mass: 0},
-            modelName: "box",
-            isVisible: true,
-            hasGizmos: true,
-            parentMeshId: undefined
-        },
-        {
-            _id: `cylinder${createRandomID()}`,
-            type: "primitive",
-            shape: "cylinder",
-            shapeOpt: { diameter: 2 },
-            materialInfo: false,
-            pos: {x:-2,y:0,z:-1},
-            scale: {x:1,y:1,z:1},
-            dir: {x:0,y:0,z:0},
-            rotQ: {x:0,y:0,z:0, w: 0},
-            physicsInfo: {enabled: true, physicsType: "cylinder", mass: 0},
-            modelName: "cylinder",
-            isVisible: true,
-            hasGizmos: true,
-            parentMeshId: undefined
-        },
-        {
-                _id: `sword${createRandomID()}`,
-                type: "remoteurl",
-                url: "./models/sword.glb",
-                materialInfo: false,
-                pos: {x:2,y:1,z:4},
-                scale: {x:1,y:1,z:1},
-                dir: {x:0,y:0,z:0},
-                rotQ: {x:0,y:0,z:0, w: 0},
-                physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
-                modelName: "sword",
-                isVisible: true,
-                hasGizmos: true,
-                parentMeshId: undefined
-        },
-        {
-            _id: `cave`,
-            type: "remoteurl",
-            url: "./models/cave.glb",
-            materialInfo: false,
-            pos: {x:0,y:0,z:-5},
-            scale: {x:1,y:1,z:1},
-            dir: {x:0,y:0,z:0},
-            rotQ: {x:0,y:0.7071,z:0, w: 0.7071},
-            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
-            modelName: "cave",
-            isVisible: true,
-            hasGizmos: true,
-            parentMeshId: undefined
-        },
-        {
-            _id: `stair`,
-            type: "remoteurl",
-            url: "./models/stair.glb",
-            materialInfo: false,
-            pos: {x:0,y:0,z:5},
-            scale: {x:1,y:1,z:1},
-            dir: {x:0,y:0,z:0},
-            rotQ: {x:0,y:1,z:0, w:6.1232e-17},
-            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
-            modelName: "stair",
-            isVisible: true,
-            hasGizmos: true,
-            parentMeshId: undefined
-        },
-    //     {
-    //         _id: "12asdf4",
-    //         type: "hlsurl",
-    //         url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
-    //         pos: {x:4,y:1,z:4},
-    //         scale: {x:5,y:5,z:5},
-    //         dir: {x:0,y:0,z:0},
-    //     }
+// rooms.set(1, {
+//     limit: 4,
+//     players: [],
+//     sceneDescription: [
+//         {
+//             _id: `box${createRandomID()}`,
+//             type: "primitive",
+//             shape: "ground",
+//             shapeOpt: {width:10, height: 10},
+//             materialInfo: { texture: "images/tex.png", uAndVScale: 12},
+//             pos: {x:0,y:0,z:0},
+//             scale: {x:10,y:10,z:10},
+//             dir: {x:0,y:0,z:0},
+//             rotQ: {x:0,y:0,z:0, w: 0},
+//             physicsInfo: {enabled: true, physicsType: "box", mass: 0},
+//             modelName: "ground",
+//             isVisible: true,
+//             hasGizmos: false,
+//             parentMeshId: undefined
+//         },
+//         {
+//             _id: `box${createRandomID()}`,
+//             type: "primitive",
+//             shape: "box",
+//             shapeOpt: { size: 1},
+//             materialInfo: false,
+//             pos: {x:1.5,y:5,z:8},
+//             scale: {x:1,y:2,z:3},
+//             dir: {x:0,y:0,z:0},
+//             rotQ: {x:0,y:0,z:0, w: 0},
+//             physicsInfo: {enabled: true, physicsType: "box", mass: 0},
+//             modelName: "box",
+//             isVisible: true,
+//             hasGizmos: true,
+//             parentMeshId: undefined
+//         },
+//         {
+//             _id: `cylinder${createRandomID()}`,
+//             type: "primitive",
+//             shape: "cylinder",
+//             shapeOpt: { diameter: 2 },
+//             materialInfo: false,
+//             pos: {x:-2,y:0,z:-1},
+//             scale: {x:1,y:1,z:1},
+//             dir: {x:0,y:0,z:0},
+//             rotQ: {x:0,y:0,z:0, w: 0},
+//             physicsInfo: {enabled: true, physicsType: "cylinder", mass: 0},
+//             modelName: "cylinder",
+//             isVisible: true,
+//             hasGizmos: true,
+//             parentMeshId: undefined
+//         },
+//         {
+//             _id: `sword${createRandomID()}`,
+//             type: "remoteurl",
+//             url: "./models/sword.glb",
+//             materialInfo: false,
+//             pos: {x:2,y:1,z:4},
+//             scale: {x:1,y:1,z:1},
+//             dir: {x:0,y:0,z:0},
+//             rotQ: {x:0,y:0,z:0, w: 0},
+//             physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+//             modelName: "sword",
+//             isVisible: true,
+//             hasGizmos: true,
+//             parentMeshId: undefined
+//         },
+//         {
+//             _id: `cave`,
+//             type: "remoteurl",
+//             url: "./models/cave.glb",
+//             materialInfo: false,
+//             pos: {x:0,y:0,z:-5},
+//             scale: {x:1,y:1,z:1},
+//             dir: {x:0,y:0,z:0},
+//             rotQ: {x:0,y:0.7071,z:0, w: 0.7071},
+//             physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+//             modelName: "cave",
+//             isVisible: true,
+//             hasGizmos: true,
+//             parentMeshId: undefined
+//         },
+//         {
+//             _id: `stair`,
+//             type: "remoteurl",
+//             url: "./models/stair.glb",
+//             materialInfo: false,
+//             pos: {x:0,y:0,z:5},
+//             scale: {x:1,y:1,z:1},
+//             dir: {x:0,y:0,z:0},
+//             rotQ: {x:0,y:1,z:0, w:6.1232e-17},
+//             physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+//             modelName: "stair",
+//             isVisible: true,
+//             hasGizmos: true,
+//             parentMeshId: undefined
+//         },
+//     //     {
+//     //         _id: "12asdf4",
+//     //         type: "hlsurl",
+//     //         url: "https://stream-fastly.castr.com/5b9352dbda7b8c769937e459/live_2361c920455111ea85db6911fe397b9e/index.fmp4.m3u8",
+//     //         pos: {x:4,y:1,z:4},
+//     //         scale: {x:5,y:5,z:5},
+//     //         dir: {x:0,y:0,z:0},
+//     //     }
 
-        // {
-        //     _id: "1235214",
-        //     type: "remoteurl",
-        //     url: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb",
-        //     pos: {x:1,y:0,z:0},
-        //      scale: {x:1,y:1,z:1},
-        //     dir: {x:0,y:0,z:0},
-        // },
+//         // {
+//         //     _id: "1235214",
+//         //     type: "remoteurl",
+//         //     url: "https://models.readyplayer.me/647fbcb1866a701f8317856c.glb",
+//         //     pos: {x:1,y:0,z:0},
+//         //      scale: {x:1,y:1,z:1},
+//         //     dir: {x:0,y:0,z:0},
+//         // },
 
-    ]
-})
-rooms.set(2, {
-    limit: 4,
-    players: [],
-    sceneDescription: [
-    {
-        _id: "1283820",
-        type: "remoteurl",
-        url: "./models/vwm.glb",
-        pos: {x:0,y:2,z:0},
-        scale: {x:1,y:1,z:1},
-        dir: {x:0,y:0,z:0},
-    }]
-})
-rooms.set(3, {
-    limit: 4,
-    players: [],
-    sceneDescription: [
-        // {
-        //     _id: "342421",
-        //     type: "equipment",
-        //     url: "./models/sword.glb",
-        //     pos: {x:0,y:1,z:0},
-        //      scale: {x:1,y:1,z:1},
-        //     dir: {x:0,y:0,z:0},
-        //     isVisible: true,
-        //     parentMeshId: false
-        // }
-    ]
-})
+//     ]
+// })
+// rooms.set(2, {
+//     limit: 4,
+//     players: [],
+//     sceneDescription: [
+//     {
+//         _id: "1283820",
+//         type: "remoteurl",
+//         url: "./models/vwm.glb",
+//         pos: {x:0,y:2,z:0},
+//         scale: {x:1,y:1,z:1},
+//         dir: {x:0,y:0,z:0},
+//     }]
+// })
+// rooms.set(3, {
+//     limit: 4,
+//     players: [],
+//     sceneDescription: [
+//         // {
+//         //     _id: "342421",
+//         //     type: "equipment",
+//         //     url: "./models/sword.glb",
+//         //     pos: {x:0,y:1,z:0},
+//         //      scale: {x:1,y:1,z:1},
+//         //     dir: {x:0,y:0,z:0},
+//         //     isVisible: true,
+//         //     parentMeshId: false
+//         // }
+//     ]
+// })
 
 // app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -278,13 +281,18 @@ io.use((socket, next) => {
 io.on("connection", socket => {
     log("connected !")
     _socket = socket
-    socket.emit("room-size", rooms.size)
+    // socket.emit("room-size", rooms.size)
 
-    socket.on('joinRoom', data => {
+    socket.on('joinRoom',async data => {
         const {name, roomNumber, avatarUrl } = data
-        const roomNum = parseInt(roomNumber)
-        const room = rooms.get(roomNum)
-        if (!room) return console.log(84, 'room number not found')
+        log(`joining room `, data)
+        const roomNum = roomNumber
+        let room = rooms.get(roomNum)
+        if(!room) {
+            room = await getRoom(roomNum)
+            rooms.set(roomNum, room)
+        }
+   
         if (room.limit <= room.players.length) return log(48, "players full")
 
         const playerDetail = {
@@ -699,13 +707,61 @@ app.get("/login/whoami", (req, res) => {
     }
 });
 
-app.get('/event/:roomid/', (req, res) => {
-    const url = req.query.url
-    const roomid = req.params.roomid
-    log(url,roomid)
-    res.json({roomid,url}).status(200)
-    io.to(parseInt(roomid)).emit("scene-updated", {roomid, url})
-})
+app.post('/sample/events/:id', async (req, res) => {
+    const payload = req.body;
+    const id = req.params.id;
+    console.log("payload -> " + JSON.stringify(payload))
+    // Validate that required fields exist
+    // Check if payload exists
+    if (!payload) {
+        return res.status(400).json({
+            error: "No payload received"
+        });
+    }
+
+    // Check each required field independently
+    if (!payload._id) {
+        return res.status(400).json({
+            error: "Missing required field: _id"
+        });
+    }
+
+    if (!payload.type) {
+        return res.status(400).json({
+            error: "Missing required field: type"
+        });
+    }
+
+    if (!payload.url) {
+        return res.status(400).json({
+            error: "Missing required field: url"
+        });
+    }
+
+//    // Validate that ID in URL matches payload
+//    if (id !== payload._id) {
+//        return res.status(400).json({
+//            error: "ID in URL must match _id in payload"
+//        });
+//    }
+
+    // Log the incoming request
+    console.log('Received configuration update:', payload);
+
+    // Emit the full payload to all clients in the room
+    // io.emit("scene-updated", [payload]);
+    // io.emit("scene-updated", {...rooms.get(1).sceneDescription, payload});
+    const array = rooms.get(id).sceneDescription
+    array.push(payload)
+    io.to(id).emit("scene-updated", array)
+    log(`updating scene `, array)
+
+    // Send success response
+    res.status(200).json({
+        message: "Configuration updated successfully",
+        id: payload._id
+    });
+});
 
 loadAuthTokens().then(() => {
     server.listen(PORT, () => log("TCP server is on ", PORT));

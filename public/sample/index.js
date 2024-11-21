@@ -1,21 +1,19 @@
 const { Engine, MeshBuilder, Vector3, PointerEventTypes } = BABYLON
-import { emitAction, emitMove, emitStop, getMyDetail, initializeSocket } from './socket/socketLogic.js';
+import { emitAction, emitMove, emitStop, getMyDetail, initializeRoom } from './socket/socketLogic.js';
 import {createScene, getPlayersInScene, getScene } from "./scenes/createScene.js";
 import { initKeyControls } from './controllers/keycontroller.js';
-import {getInitialPlayer, initDropDown} from './dropdown.js';
 const log = console.log;
 
 let state = 'LOBBY' // LOADING, LOBBY, GAME
 let canPress = true
 
-initializeSocket()
-initDropDown()
+initializeRoom()
+// initDropDown()
+
 
 
 export async function main() {
   const engine = new Engine(document.querySelector("canvas"))
-  const initialPlayer = getInitialPlayer()
-  if(!initialPlayer) return console.warn("no selected avatar")
 
   const { scene } = await createScene(engine)
 

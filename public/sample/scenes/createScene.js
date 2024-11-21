@@ -4,7 +4,7 @@ import { initKeyControls } from '../controllers/keycontroller.js'
 import { initJoyStick } from '../controllers/thumbController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
 import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
-import { getSelectedImmMode } from '../dropdown.js'
+// import { getSelectedImmMode } from '../dropdown.js'
 import { attachToGizmoArray } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
 import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
@@ -54,7 +54,7 @@ export async function createScene(_engine) {
     await importAnimations("walkback_anim.glb");
 
 
-    let sessionMode = getSelectedImmMode()
+    let sessionMode = "immersive-vr"
     // let sessionMode = "inline"
 
     const xrHelper = await scene.createDefaultXRExperienceAsync({
@@ -265,14 +265,16 @@ export function checkSceneModels(){
         sceneDescription.forEach(socketModel => {
             const {pos,scale,rotQ, _id,physicsInfo, materialInfo} = socketModel
             const modelAlreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
-            if (modelAlreadyHere) {                
+            if (modelAlreadyHere) {                        
                 if(socketModel.parentMeshId){
                     const mesh = modelAlreadyHere.mesh
                     const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                     if(parentPlayer) {
                         parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
                     }
-                }
+                }else{
+                    log(`already created in scene ${socketModel._id}`)
+                }                  
                 return 
             }else{
                 if(socketModel.type === "hlsurl"){
@@ -368,15 +370,19 @@ export function checkSceneModels(){
                 // rotation implement here
                 }
                 if(socketModel.type === "remoteurl"){
-                    importCustomModel(socketModel.url).then( avatar => {        
+                    log("using async import to ", socketModel._id)
+                    importCustomModel(socketModel.url).then( avatar => {
+                        log(avatar)
                         const Root = avatar.meshes[0]
                         const mainMesh = avatar.meshes[1]
                         mainMesh.parent = null
-                        Root.dispose()
+                        // Root.dispose()
             
-                        mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
-                        mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
-                        if(rotQ) mainMesh.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z, rotQ.w)
+                        // mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
+                        // mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
+                        Root.scaling = new Vector3(scale.x,scale.y,scale.z)
+                        Root.position = new Vector3(pos.x, pos.y, pos.z)
+                        // if(rotQ) mainMesh.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z, rotQ.w)
                         attachToGizmoArray(mainMesh)
                         mainMesh.id = socketModel._id
                         modelsInScene.push({...socketModel, mesh: mainMesh})
@@ -386,6 +392,7 @@ export function checkSceneModels(){
                             const agg = createAggregate(mainMesh, {mass: physicsInfo.mass}, physicsInfo.physicsType)
                             agg.body.disablePreStep = false
                         }
+                        
                     })
                 }
                 if(socketModel.type === "equipment"){

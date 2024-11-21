@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Room Configuration Form</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        fieldset {
+            margin: 15px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+        }
+        input {
+            display: block;
+            margin: 10px 0;
+            padding: 8px;
+            width: 200px;
+        }
+        .readonly-field {
+            background-color: #f5f5f5;
+            border: 1px solid #ddd;
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 4px;
+        }
+        .readonly-label {
+            font-weight: bold;
+            color: #666;
+            margin-top: 10px;
+            display: block;
+        }
+        .error {
+            color: red;
+        }
+        .success {
+            color: green;
+        }
+    </style>
+</head>
+<body>
+<h2>Room Configuration</h2>
+
+<div id="info-display">
+    <div>
+        <span class="readonly-label">Generated ID:</span>
+        <div id="idDisplay" class="readonly-field">-</div>
+    </div>
+    <div>
+        <span class="readonly-label">Type:</span>
+        <div id="typeDisplay" class="readonly-field">remoteurl</div>
+    </div>
+    <div>
+        <span class="readonly-label">Model URL:</span>
+        <div id="modelDisplay" class="readonly-field">-</div>
+    </div>
+</div>
+
+<form id="configForm">
+    <fieldset>
+        <legend>Position:</legend>
+        <input type="number" id="posX" placeholder="X Position" value="2" step="any" required />
+        <input type="number" id="posY" placeholder="Y Position" value="1" step="any" required />
+        <input type="number" id="posZ" placeholder="Z Position" value="4" step="any" required />
+    </fieldset>
+
+    <fieldset>
+        <legend>Scale:</legend>
+        <input type="number" id="scaleX" placeholder="X Scale" value="1" step="any" required />
+        <input type="number" id="scaleY" placeholder="Y Scale" value="1" step="any" required />
+        <input type="number" id="scaleZ" placeholder="Z Scale" value="1" step="any" required />
+    </fieldset>
+
+    <fieldset>
+        <legend>Direction:</legend>
+        <input type="number" id="dirX" placeholder="X Direction" value="0" step="any" required />
+        <input type="number" id="dirY" placeholder="Y Direction" value="0" step="any" required />
+        <input type="number" id="dirZ" placeholder="Z Direction" value="0" step="any" required />
+    </fieldset>
+
+    <button type="submit">Submit</button>
+</form>
+
+<div id="message"></div>
+
+<script>
+    let currentId = '';
+
+    function generateUUID() {
+        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+            const r = Math.random() * 16 | 0;
+            const v = c == 'x' ? r : (r & 0x3 | 0x8);
+            return v.toString(16);
+        });
+    }
+
+    function getUrlParameter(name) {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get(name);
+    }
+
+    // Initialize display fields
+    function initializeDisplayFields() {
+        const modelUrl = getUrlParameter('model');
+        currentId = generateUUID();
+
+        document.getElementById('idDisplay').textContent = currentId;
+        document.getElementById('typeDisplay').textContent = 'remoteurl';
+        document.getElementById('modelDisplay').textContent = modelUrl || 'No model URL provided';
+
+        if (!modelUrl) {
+            displayMessage('Warning: Model URL parameter is missing', 'error');
+        }
+    }
+
+    document.getElementById('configForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const modelUrl = getUrlParameter('model');
+        if (!modelUrl) {
+            displayMessage('Model URL parameter is required', 'error');
+            return;
+        }
+        // _id: `stair`,
+        //     type: "remoteurl",
+        //     url: "./models/stair.glb",
+        //     materialInfo: false,
+        //     pos: {x:0,y:0,z:5},
+        //     scale: {x:1,y:1,z:1},
+        //     dir: {x:0,y:0,z:0},
+        //     rotQ: {x:0,y:1,z:0, w:6.1232e-17},
+        //     physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+        //     modelName: "stair",
+        //     isVisible: true,
+        //     hasGizmos: true,
+        //     parentMeshId: undefined
+        const payload = {
+            _id: currentId,
+            type: "remoteurl",
+            url: modelUrl,
+            materialInfo: false,
+            physicsInfo: {enabled: true, physicsType: "mesh", mass: 0},
+            hasGizmos: true,
+            isVisible: true,
+            parentMeshId: undefined,
+            modelName: currentId,
+            rotQ: {x:0,y:0,z:0, w:0},
+            pos: {
+                x: parseFloat(document.getElementById('posX').value),
+                y: parseFloat(document.getElementById('posY').value),
+                z: parseFloat(document.getElementById('posZ').value)
+            },
+            scale: {
+                x: parseFloat(document.getElementById('scaleX').value),
+                y: parseFloat(document.getElementById('scaleY').value),
+                z: parseFloat(document.getElementById('scaleZ').value)
+            },
+            dir: {
+                x: parseFloat(document.getElementById('dirX').value),
+                y: parseFloat(document.getElementById('dirY').value),
+                z: parseFloat(document.getElementById('dirZ').value)
+            }
+        };
+
+        try {
+            const response = await fetch(`/sample/events/1`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (response.ok) {
+                displayMessage('Configuration submitted successfully!', 'success');
+            } else {
+                const error = await response.text();
+                displayMessage(`Error: ${error}`, 'error');
+            }
+        } catch (err) {
+            displayMessage(`Error: ${err.message}`, 'error');
+        }
+    });
+
+    function displayMessage(msg, type) {
+        const messageDiv = document.getElementById('message');
+        messageDiv.textContent = msg;
+        messageDiv.className = type;
+    }
+
+    // Initialize the display fields when the page loads
+    initializeDisplayFields();
+</script>
+</body>
+</html>
