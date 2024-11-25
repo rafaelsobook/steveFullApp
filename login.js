@@ -144,7 +144,7 @@ async function login(username, password) {
       const users = await loadUsers();
       const account = users.find(acc => acc.username === username);
 
-      if (!account) {
+      if (!account){
           log("Account not found.");
           return { isPasswordValid: false, account: undefined }
       }

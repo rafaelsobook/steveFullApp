@@ -48,8 +48,10 @@ async function getFileContent(roomId) {
 async function updateFileOnGitHub(content, sha, roomId) {
   log("Updating file on GitHub...");
   const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ROOM_DIR}/${roomId}.json?ref=${BRANCH}`;
-  const encodedContent = Buffer.from(content).toString("base64");
-
+  // const encodedContent = Buffer.from(content).toString("base64");
+  const encodedContent = Buffer.from(JSON.stringify(content, null, 2)).toString("base64");
+  // log(content)
+  // log(encodedContent)
   try {
     const response = await axios.put(
       url,
@@ -72,12 +74,12 @@ async function updateFileOnGitHub(content, sha, roomId) {
     throw error;
   }
 }
-// Main function to execute the process
-async function saveChanges(newSceneDescription, roomId) {
-  try {
-    log("Starting the process...");
 
-    log("Retrieving file SHA for update...");
+// Main function to execute the process
+async function saveChangeDescription(newSceneDescription, roomId) {
+  try {
+
+    log(`Retrieving Room ${roomId} file SHA for update...`);
     const fileInfoResponse = await axios.get(
       `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${ROOM_DIR}/${roomId}.json?ref=${BRANCH}`,
       {
@@ -91,7 +93,7 @@ async function saveChanges(newSceneDescription, roomId) {
     log("File SHA retrieved:", sha);
 
     // Update the file on GitHub
-    await updateFileOnGitHub(csvContent, sha);
+    await updateFileOnGitHub(newSceneDescription, sha, roomId);
     log("Process completed successfully.");
 
   } catch (error) {
@@ -115,5 +117,5 @@ async function getRoom(roomId) {
 }
 
 module.exports = {
-    saveChanges, getRoom
+  saveChangeDescription, getRoom
 }
