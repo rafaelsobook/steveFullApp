@@ -602,7 +602,7 @@ app.post('/sample/events/:id', async (req, res) => {
         id: payload._id
     });
 });
-app.post("/register", async(req, res) => {
+app.post("/login/register", async(req, res) => {
     const { id,username,password} = req.body
     const users = await loadUsers()
     

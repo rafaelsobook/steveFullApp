@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>User Registration</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+      }
+      form {
+        max-width: 400px;
+        margin: 0 auto;
+      }
+      label {
+        display: block;
+        margin-top: 10px;
+      }
+      input {
+        width: 100%;
+        padding: 8px;
+        margin-top: 5px;
+      }
+      button {
+        margin-top: 15px;
+        padding: 10px 15px;
+        background-color: #007bff;
+        color: #fff;
+        border: none;
+        cursor: pointer;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>User Registration</h1>
+    <form id="registrationForm">
+      <label for="username">Username:</label>
+      <input type="text" id="username" name="username" required />
+
+      <label for="password">Password:</label>
+      <input type="password" id="password" name="password" required />
+
+      <button type="submit">Register</button>
+    </form>
+
+    <script>
+      function generateUUID() {
+        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
+          (
+            c ^
+            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
+          ).toString(16)
+        );
+      }
+
+      document
+        .getElementById("registrationForm")
+        .addEventListener("submit", async (event) => {
+          event.preventDefault(); // Prevent default form submission
+
+          const id = generateUUID();
+          const username = document.getElementById("username").value;
+          const password = document.getElementById("password").value;
+
+          const data = { id, username, password };
+
+          try {
+            const response = await fetch("/login/register", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify(data),
+            });
+
+            if (response.ok) {
+              alert("User registered successfully!");
+            } else {
+              alert("Failed to register user. Please try again.");
+            }
+          } catch (error) {
+            console.error("Error:", error);
+            alert(
+              "An error occurred while registering. Please check your connection."
+            );
+          }
+        });
+    </script>
+  </body>
+</html>
