@@ -137,7 +137,7 @@ export function initializeRoom() {
             // log(desc.name, desc.isVisible)
         }
     })    
-})
+  })
   socket.on("moved-object", sceneDescriptions => {
     const scene = getScene()
     if(!scene) return log("scene not ready")

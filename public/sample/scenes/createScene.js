@@ -273,9 +273,11 @@ export function checkSceneModels(){
                     const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                     if(parentPlayer) {
                         parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
+                    } else {
+                        if(mesh.getChildren().length) setMeshesVisibility(mesh.getChildren(), false)
                     }
                 }else{
-                    log(`already created in scene ${socketModel._id}`)
+                    // log(`already created in scene ${socketModel._id}`)
                 }                  
                 return 
             }else{
@@ -372,23 +374,37 @@ export function checkSceneModels(){
                 // rotation implement here
                 }
                 if(socketModel.type === "remoteurl"){
-                    log("using async import to ", socketModel._id)
-                    importCustomModel(socketModel.url).then( avatar => {
-                        log(avatar)
-                        const Root = avatar.meshes[0]
-                        const mainMesh = avatar.meshes[1]
-                        mainMesh.parent = null
-                        // Root.dispose()
-            
-                        // mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
-                        // mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
-                        Root.scaling = new Vector3(scale.x,scale.y,scale.z)
-                        Root.position = new Vector3(pos.x, pos.y, pos.z)
+                    // careful in this part. will check on top if this mesh is created if not will create.
+                    // this mesh will only be part of modelscene after the async so on the top this mesh will always not be created
+                    // so after this mesh finish on creating the model will check again if there is a duplicate mesh
+
+                    importCustomModel(socketModel.url).then( model => {
+                        
+                        const Root = model.meshes[0]
+                        model.skeletons.length && model.skeletons.forEach(skeleton => {
+                            skeleton.dispose(); // Dispose of skeletons if they’re no longer needed
+                        });
+                        const alreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
+                        if(alreadyHere) return model.meshes.forEach(mesh => mesh.dispose())
+                        
+                        const mergeableMeshes = model.meshes.filter(mesh => mesh.name !== "__root__");
+                        mergeableMeshes.forEach(mesh =>{
+                            mesh.parent = null                           
+                            if(mesh.getVerticesData(BABYLON.VertexBuffer.MatricesWeightsKind)){
+                                mesh.setVerticesData(BABYLON.VertexBuffer.TangentKind, null, false);
+                            }
+                        })
+                        Root.dispose()
+                        var mainMesh = BABYLON.Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
+                        
+                        mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
+                        mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
                         // if(rotQ) mainMesh.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z, rotQ.w)
-                        attachToGizmoArray(mainMesh)
+                        
                         mainMesh.id = socketModel._id
+
+                        attachToGizmoArray(mainMesh)
                         modelsInScene.push({...socketModel, mesh: mainMesh})
-                        // lookAr direction here
 
                         if(physicsInfo.enabled){
                             const agg = createAggregate(mainMesh, {mass: physicsInfo.mass}, physicsInfo.physicsType)
@@ -398,24 +414,34 @@ export function checkSceneModels(){
                     })
                 }
                 if(socketModel.type === "equipment"){
-                    // log(`creating ... `, socketModel)
+                    // careful in this part. will check on top if this mesh is created if not will create.
+                    // this mesh will only be part of modelscene after the async so on the top this mesh will always not be created
+                    // so after this mesh finish on creating the model will check again if there is a duplicate mesh
                     importCustomModel(socketModel.url).then( model => {        
        
                         const Root = model.meshes[0]
-              
+                        const alreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
+                        if(alreadyHere) {
+                            model.meshes.forEach(mesh => mesh.dispose())
+                            return Root.dispose()
+                        }
+
                         if(materialInfo){
                             model.meshes[1].material = createMat(scene, socketModel.modelName, materialInfo.diffuse, materialInfo.normal,materialInfo.rough)
                         }
-                    
+
+                        model.meshes[1].name = `${socketModel.modelName}.${socketModel.parentMeshId}`
+                        setMeshesVisibility(Root.getChildren(), socketModel.isVisible)
+                        modelsInScene.push({...socketModel, mesh: Root})
+
                         if(socketModel.parentMeshId){
                             const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                             if(parentPlayer){
                                 parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
+                            } else {
+                                setMeshesVisibility(Root.getChildren(), false)
                             }
                         }
-                        model.meshes[1].name = `${socketModel.modelName}.${socketModel.parentMeshId}`
-                        setMeshesVisibility(Root.getChildren(), socketModel.isVisible)
-                        modelsInScene.push({...socketModel, mesh: Root})
                     }).catch(error => log(error))
                 }                
             }
@@ -479,118 +505,3 @@ function createHandMat(scene, isLight){
     handMat.backFaceCulling = true
     return handMat
 }
-
-
-
-
-
-
-
-
-
-
-// const menuScreen = createMenuVTwo(scene, false, {x:0, y:1.5, z:0})
-    // setInterval(() => {
-    //     const myChar = getCharacter()
-    //     if(!myChar) return
-    //     // menuScreen.node.addRotation(0,1,0) works
-    //     const screenPos = menuScreen.position.clone()
-    //     screenPos.y = myChar.mainBody.position.y
-    //     const result = screenPos.subtract(myChar.mainBody.position).normalize()
-    //     const angle = Math.atan2(result.x, result.z)
-    //     menuScreen.node.rotation.y = angle
-    // }, 1000)
-    // createOptScreen(scene, false, {x:-1, y: 2,z:-2})
-
-    // const manager = create3DGuiManager(scene)
-    // const { checkBx, header } = createCheckBox("isVertical ? ", false, false, false, "40px", "40px", "blue")
-    // const samplebtn = createThreeDBtn(manager, "Different", 40, .2, "./images/sword.png")    
-    // samplebtn.position = new Vector3(-1,1.5,4)
-    // const slate = createSlate("Inventory", manager, false, {x: 0, y: 1.8,z:2}, .4)
-
-    // const skybox = MeshBuilder.CreateBox("skyBox", {size: 500}, scene);
-    // skybox.infiniteDistance = true;
-
-    // // Create SkyMaterial and apply it to the skybox
-    // const skyMaterial = new SkyMaterial("skyMaterial", scene);
-    // skyMaterial.backFaceCulling = false;
-
-    // skyMaterial.inclination = 0.1; // Sun position (0 is sunrise, 0.5 is noon, 1 is sunset)
-    // skyMaterial.turbidity = .5; // Lower turbidity for a clearer sky
-    // skyMaterial.luminance = .9; // Higher luminance for a brighter sky
-    // skyMaterial.rayleigh = 2; // Adjust the scattering of light
-
-    // skybox.material = skyMaterial;
-
-    // scene.onPointerObservable.add((e) => {
-    //     if (e.type === PointerEventTypes.POINTERDOWN) {
-    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), scene.activeCamera);
-    //         let pickInfo = scene.pickWithRay(ray);
-    //         if(pickInfo){
-    //             log(pickInfo.pickedMesh.name)
-    //         }
-    //         // if(pickInfo && pickInfo.pickedPoint){
-    //         //     const mc = getCharacter()
-    //         //     if(!mc) return log("no character")
-    //         //     const point = pickInfo.pickedPoint
-                
-    //         //     const bonePos = mc.neckNode.getAbsolutePosition()
-    //         //     var direction = point.subtract(bonePos);
-    //         //     direction.normalize();
-    //         //     var targetYaw = Math.atan2(direction.x, direction.z);
-    //         //     mc.neckNode.rotate(BABYLON.Axis.Y, targetYaw);
-    //         //     log(mc.neckNode.rotationQuaternion)
-    //         //     mc.skeleton.prepare()
-    //         //     // var diffX = point.x - mc.mainBody.position.x;
-    //         //     // var diffY = point.z - mc.mainBody.position.z;
-    //         //     // const angle = Math.atan2(diffX, diffY)
-    //         //     // log(mc.skeleton)
-    //         //     // mc.skeleton.bones.forEach(bone => {
-    //         //     //     if(bone.name.includes("Neck")){
-    //         //     //         var rotQ = new Quaternion.RotationYawPitchRoll(0, angle, 0);
-    //         //     //         bone.setRotationQuaternion(rotQ, Space.WORLD)
-    //         //     //         log(bone.rotationQuaternion)
-    //         //     //     }
-    //         //     // })
-    //         // }
-    //         // const clickedMeshName = pickInfo.pickedMesh.name.toLowerCase()
-    //         // const clickedPos = pickInfo.pickedMesh.getAbsolutePosition()
-    //         // const myDetail = getMyDetail()
-    //         // const myMesh = scene.getMeshByName(`player.${myDetail._id}`)
-    //         // if(!myMesh) return log('cannot find my mesh')
-    //         // const currentPos = myMesh.position
-    //         // log('will move')
-    //         // emitMove({
-    //         //     _id: myDetail._id, 
-    //         //     movementName: "clickedTarget",
-    //         //     loc: {x: currentPos.x, y: currentPos.y,z: currentPos.z}, 
-    //         //     direction: {x: clickedPos.x, y: currentPos.y, z: clickedPos.z} 
-    //         // })
-    //     }
-    // });
-
-    
-    // havok sphere
-    // const sphere =  createMesh(scene, {x: Scalar.RandomRange(-1,1), y: 5, z: Scalar.RandomRange(-1,1)}, "sphere")
-
-    // sphere.actionManager = new ActionManager(scene)
-    // sphere.actionManager.registerAction(new ExecuteCodeAction(
-    //     ActionManager.OnPickDownTrigger, e => {
-    //         const ray = scene.createPickingRay(scene.pointerX, scene.pointerY, Matrix.Identity(), cam)
-    //         const pickInfo = scene.pickWithRay(ray)
-
-    //         const normal = scene.activeCamera?.getForwardRay().direction.negateInPlace().normalize()
-    //         const decal = MeshBuilder.CreateDecal('decal', sphere, {
-    //             position: pickInfo.pickedPoint,
-    //             normal,
-    //             // size: decalSize,
-    //         })
-            // const decimalMaterial = new StandardMaterial('decimal', scene)
-            // decimalMaterial.diffuseTexture = new Texture('./images/dragon.png', scene)
-            // decimalMaterial.emissiveTexture = new Texture('./images/dragon.png', scene)
-            // decimalMaterial.diffuseTexture.hasAlpha = true
-            // decimalMaterial.emissiveTexture.hasAlpha = true
-            // decimalMaterial.zOffset = -2
-    //         decal.material = decimalMaterial
-    //     }
-    // ))

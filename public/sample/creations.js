@@ -10,7 +10,6 @@ Vector3,GizmoManager, Animation, BoneIKController,Debug, MeshBuilder, SceneLoade
 const log = console.log
 
 
-
 export async function importCustomModel(_avatarUrl, removeParent){
     const scene = getScene()
     const Model = await SceneLoader.ImportMeshAsync("", null, _avatarUrl, scene);
