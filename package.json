@@ -18,9 +18,9 @@
   "scripts": {
     "dev": "cross-env NODE_ENV=dev nodemon index.js",
     "production": "cross-env NODE_ENV=production node index.js",
-    "steve-dev": "cross-env NODE_ENV=steve-dev nodemon index.js",
+    "steve-dev": "open -a 'Google Chrome' https://localhost:8006/ && cross-env NODE_ENV=steve-dev nodemon index.js",
     "steve-prod": "cross-env NODE_ENV=steve-prod node index.js",
-    "admin-steve-dev": "cross-env NODE_ENV=steve-dev node admin.js",
+    "admin-steve-dev": "open -a 'Google Chrome' https://localhost:8006/admin && cross-env NODE_ENV=steve-dev node admin.js",
     "admin-dev": "cross-env NODE_ENV=dev node admin.js",
     "test": "echo \"Error: no test specified\" && exit 1"
   },

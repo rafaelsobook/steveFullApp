@@ -2,6 +2,7 @@ const {Quaternion,Color3, Space,Axis, SkyMaterial,Debug, BoneIKController, Gizmo
 
 import { initKeyControls } from '../controllers/keycontroller.js'
 import { initJoyStick } from '../controllers/thumbController.js'
+import { initCameraControl } from '../controllers/cameraController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
 import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
 // import { getSelectedImmMode } from '../dropdown.js'
@@ -73,6 +74,7 @@ export async function createScene(_engine) {
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)
+    initCameraControl(getSocket(), cam)
     initKeyControls(scene)
     await initVrStickControls(scene, xrHelper)
 

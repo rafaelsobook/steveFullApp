@@ -321,7 +321,304 @@ export function initializeRoom() {
     avatarUrl: user.avatarUrl
   })
 }
+//////////////// Video Chat - Start //////////////////////
 
+// let socket = io('');
+
+
+function generateUUID() {
+  // Use the crypto API for randomness
+  return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
+    (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
+  );
+}
+
+
+// let cameraSelect = document.getElementById('cameraSelect');
+const urlParams = new URLSearchParams(window.location.search);
+const roomName = urlParams.get('room');
+
+let creator = false;
+let rtcPeerConnection;
+let userStream;
+
+
+// let muteFlag = false;
+let mediaType = "camera"; // can be "camera", "screen", or "audio"
+let userVideo;
+let peerVideos = []
+
+// TODO: userVideo and peerVideos need 
+
+let iceServers = {
+  iceServers: [
+    { urls: "stun:stun.services.mozilla.com" },
+    { urls: "stun:stun.l.google.com:19302" },
+  ],
+};
+
+export function emitVideoJoin(type) {  
+
+  if (roomName == "") {
+    alert("room is expected as a parameter in the url");
+  } else {
+    mediaType = type;
+    socket.emit("join", roomName);
+    console.log("Join Room")
+  }
+}
+
+
+
+export function emitVideoStop() {  
+  socket.emit("leave", roomName);
+  
+  if (userVideo.srcObject) {
+    userVideo.srcObject.getTracks().forEach(track => track.stop());
+  }
+  if (peerVideo.srcObject) {
+    peerVideo.srcObject.getTracks().forEach(track => track.stop());
+  }
+
+  if (rtcPeerConnection) {
+    rtcPeerConnection.ontrack = null;
+    rtcPeerConnection.onicecandidate = null;
+    rtcPeerConnection.close();
+    rtcPeerConnection = null;
+  }
+};
+
+
+
+function createSimulatedVideoStream(audioStream) {
+  const canvas = document.createElement('canvas');
+  canvas.width = 640;
+  canvas.height = 480;
+  const ctx = canvas.getContext('2d');
+
+  // Create a simple animation
+  function drawAnimation() {
+    ctx.fillStyle = 'black';
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '30px Arial';
+    ctx.fillText('Audio Only', canvas.width/2 - 70, canvas.height/2);
+
+    const now = new Date();
+    ctx.fillText(now.toLocaleTimeString(), canvas.width/2 - 70, canvas.height/2 + 40);
+
+    requestAnimationFrame(drawAnimation);
+  }
+  drawAnimation();
+
+  const videoStream = canvas.captureStream(30); // 30 FPS
+  const audioTracks = audioStream.getAudioTracks();
+  audioTracks.forEach(track => videoStream.addTrack(track));
+
+  return videoStream;
+}
+
+
+socket.on("created", async function () {
+  creator = true;
+  await getAndSetUserMedia();
+});
+
+socket.on("joined", async function () {
+  creator = false;
+  await getAndSetUserMedia();
+});
+
+async function getAndSetUserMedia() {
+  let mediaPromise;
+
+  switch (mediaType) {
+    case "screen":
+      mediaPromise = navigator.mediaDevices.getDisplayMedia({ video: true, audio: true });
+      break;
+    case "audio":
+      mediaPromise = navigator.mediaDevices.getUserMedia({ audio: true })
+        .then(createSimulatedVideoStream);
+      break;
+    default: // camera
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevice = devices.find(device => device.kind === 'videoinput');
+      
+      if (!videoDevice) {
+        alert("No cameras found!");
+        return;
+      }
+
+      mediaPromise = navigator.mediaDevices.getUserMedia({
+        audio: true,
+        video: { width: 500, height: 500, deviceId: { exact:videoDevice.deviceId } }
+      });
+  }
+
+  mediaPromise
+    .then(setUpStream)
+    .catch(handleMediaError);
+}
+
+function setUpCamera(scene, stream, _id, pos){
+  console.log(getScene())
+  const engine = getScene().getEngine()
+
+  // TODO check if video tag exists before trying to create it
+  // Create the video element
+  const video = document.createElement("video");
+  video.autoplay = false;
+  video.playsInline = true;
+
+  video.id = _id
+  video.srcObject = stream;
+  video.onloadedmetadata = function (e) {
+    video.play();
+  };
+
+  // Append the video element to the body
+  document.body.appendChild(video);
+  console.log("Adding HTML video element");
+
+  // This is where you create and manipulate meshes
+  var TV = BABYLON.MeshBuilder.CreatePlane("myPlane", {width: 1.7, height: 1}, scene);
+  // TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+  TV.position = new BABYLON.Vector3(pos.x,pos.y, pos.z)
+  TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
+  TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
+  TV.actionManager = new BABYLON.ActionManager(scene);
+
+
+  // Video material
+  const videoMat = new BABYLON.StandardMaterial("textVid", scene);
+  // var video = document.querySelector('video');
+  var videoTexture = new BABYLON.VideoTexture('video', video, scene, true, true);
+
+  videoMat.backFaceCulling = false;
+  videoMat.diffuseTexture = videoTexture;
+  videoMat.emissiveColor = BABYLON.Color3.White();
+  TV.material = videoMat;
+  var htmlVideo = videoTexture.video;
+
+  // video.srcObject = stream;
+  engine.hideLoadingUI();
+  video.addEventListener('loadedmetadata',function() {
+      TV.actionManager.registerAction(
+          new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
+          function(event) {
+              htmlVideo.play();
+          })
+      );
+  });
+  return video
+}
+function setUpStream(stream) {
+
+  userStream = stream;
+
+  userVideo = setUpCamera(
+    scene, 
+    stream, 
+    generateUUID(), // Need to make random
+    {x:4,y:1,z:4}  
+  )
+
+  socket.emit("ready", roomName);
+}
+
+function handleMediaError(err) {
+  console.error(err);
+  alert("Couldn't access media: " + err.message);
+}
+
+socket.on("full", function () {
+  alert("Room is Full, Can't Join");
+});
+
+socket.on("ready", function () {
+  if (creator) {
+    rtcPeerConnection = new RTCPeerConnection(iceServers);
+    rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
+    rtcPeerConnection.ontrack = OnTrackFunction;
+    userStream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, userStream));
+
+    rtcPeerConnection
+      .createOffer()
+      .then((offer) => {
+        rtcPeerConnection.setLocalDescription(offer);
+        socket.emit("offer", offer, roomName);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+});
+
+socket.on("candidate", function (candidate) {
+  let icecandidate = new RTCIceCandidate(candidate);
+  rtcPeerConnection.addIceCandidate(icecandidate);
+});
+
+socket.on("offer", function (offer) {
+  if (!creator) {
+    rtcPeerConnection = new RTCPeerConnection(iceServers);
+    rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
+    rtcPeerConnection.ontrack = OnTrackFunction;
+    userStream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, userStream));
+    rtcPeerConnection.setRemoteDescription(offer);
+
+    rtcPeerConnection
+      .createAnswer()
+      .then((answer) => {
+        rtcPeerConnection.setLocalDescription(answer);
+        socket.emit("answer", answer, roomName);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+  }
+});
+
+socket.on("answer", function (answer) {
+  rtcPeerConnection.setRemoteDescription(answer);
+});
+
+socket.on("leave", function () {
+  creator = true;
+  // if (peerVideo.srcObject) {
+  //   peerVideo.srcObject.getTracks().forEach(track => track.stop());
+  // }
+
+  if (rtcPeerConnection) {
+    rtcPeerConnection.ontrack = null;
+    rtcPeerConnection.onicecandidate = null;
+    rtcPeerConnection.close();
+    rtcPeerConnection = null;
+  }
+});
+
+function OnIceCandidateFunction(event) {
+  if (event.candidate) {
+    socket.emit("candidate", event.candidate, roomName);
+  }
+}
+
+function OnTrackFunction(event) {
+  const peer = setUpCamera(
+    scene,
+    event.streams[0],
+    `${Math.random()}`,
+    {x: 1 + Math.random()*2, y:2 + Math.random()*2, z:1}
+  )
+  peerVideos.push(peer)
+
+  // peerVideo.srcObject = event.streams[0];
+  // peerVideo.onloadedmetadata = function (e) {
+  //   peerVideo.play();
+  // };
+}
+
+/////////////////////  Video Chat - End //////////////////////
 
 // Movement emits
 export function emitMove(movementDetail) {
