@@ -1,0 +1,48 @@
+const { Vector3 } = BABYLON
+import { getMyDetail } from "../socket/socketLogic.js";
+const log = console.log
+
+let timeOutKeyId = {}
+let isReloading = {}
+
+export function runItemActions(scene, socket, r_indxTip, r_wrist) {
+    const myDetail = getMyDetail()
+
+    if (myDetail && myDetail.equipment) {
+        myDetail.equipment.forEach(item => {
+            item.actions.forEach(action => {
+                if(action.trigger === "collision") return
+                const triggered = eval(action.trigger)
+                if(triggered){
+                    if(isReloading[item.name]) return
+                    
+                    const itemMesh = scene.getMeshByName(`${item.name}.${myDetail._id}`)
+                    if(!itemMesh) return log("item triggered not found")
+                    if(!itemMesh.isVisible) return log("item is not visible")
+                    log(itemMesh.isVisible)
+                    
+                    const respwnOffset = action.respawn_offset
+                    const targOffset = action.target_offset
+                    const respawnPos = Vector3.TransformCoordinates(new Vector3(respwnOffset.x,respwnOffset.y,respwnOffset.z), itemMesh.computeWorldMatrix(true))
+                    const targDir = Vector3.TransformCoordinates(new Vector3(targOffset.x,targOffset.y,targOffset.z), itemMesh.computeWorldMatrix(true))
+
+                    const bulletDir = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
+
+                    socket.emit(action.name, { 
+                        pos: {x: respawnPos.x, y: respawnPos.y, z: respawnPos.z},
+                        dir: bulletDir,
+                        roomNum: myDetail.roomNum,
+                        resulting_action: action.resulting_action
+                    })
+                    isReloading[item.name] = true
+                    if(timeOutKeyId[item.name]) clearTimeout(timeOutKeyId[item.name])
+                    timeOutKeyId[item.name] = setTimeout(() => {
+                        isReloading[item.name] = false
+                    }, 1000)
+                }
+            })
+            
+            // log(eval("Vector3.Distance(r_indxTip.position, r_wrist.position)"))
+        })
+    }
+}

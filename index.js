@@ -13,7 +13,7 @@ const {login, loadUsers, hashPassword, saveChanges} = require("./login.js")
 
 const PORT = process.env.PORT || config.port
 const log = console.log
-const { generateUUID, createRandomID} = require("./tools.js");
+const { generateUUID, createRandomID, createPlayerDetail, loadEquipment, createRandomNum} = require("./tools.js");
 const {getRoom, saveChangeDescription} = require("./room.js")
 const { ok } = require('assert');
 
@@ -137,117 +137,9 @@ io.on("connection", socket => {
         }   
         if (room.limit <= room.players.length) return log(48, "players full")
 
-        const playerDetail = {
-            _id: generateUUID(),
-            name: name,
-            socketId: socket.id,
-            loc: {
-                x: -2 + Math.random() * 3,
-                y: 1, // height of a box is 2 half of it is 1
-                z: 0,//-2 + Math.random()*3
-            },
-            movement: {
-                moveX: 0,
-                moveZ: 0
-            },
-            dir: {
-                x: 0,
-                y: 0,
-                z: 0 // facing forward
-            },
-            // for VR hands and head
-            vrHandsVisible: false,
-            quat: undefined,
-            wristPos: false,
-            wristQuat: false,
-            headDirection: false,
-            // {
-            //     left: { x: 0, y:0, z: 0, w: 1 },
-            //     right: { x: 0, y:0, z: 0, w: 1 }
-            // },
-            _actionName: undefined,
-            _moving: false,
-            avatarUrl,
-            roomNum,
-            controller: undefined, //key//joystick//vr//teleport
-            currentSpd: 1.3,
-            // for vr items
-            equipment: [
-                {
-                    id: generateUUID(),
-                    name: 'gun',
-                    type: 'equipment',
-                    model_url: './models/gun.glb',
-                    materialInfo: false,
-                //   thumbnail_url: './image/${modelnName}.png', // could be generated with blender
-                    offset: {
-                        parent : "wrist",// Same between left and right?
-                        position: {x: -0.02, y: -0.03, z:-0.08}, // relative to wrist
-                        scaling: .11, // uniform
-                        rotation: {x: 0.3118619785970446,y: -0.517518584933339, z: 0.6331840797317805, w: 0.48372982307105} // quaterion
-                    },
-                    actions: [
-                      {
-                        name: 'trigger-bullet',
-                        trigger: 'distance(${IndexTip.postion}, ${wrist.position}) <= 0.09',        
-                        respawn_offset: { x:-2.5, y:.5,z: 0 },
-                        target_offset: {x:-15.5, y:.5, z:0},
-                        pos : "${respawn_offset} transformed ${equipment.pos}",
-                        dir : "${pos} - ${target_offset}",
-                        emit: { pos: {}, dir: {}, roomNum: {} },
-                        resulting_action: {
-                            model: {meshType: "sphere", diameter: .1},
-                            mass: .5,
-                            force: 10,        
-                            // starting pos: <from message>, dir: <from message>,        
-                            // timeout: {1500, "${equipment.state.isReloading}=true" -> "${equipment.state.isReloading}=false"}
-                            collisioncallback: {
-                                // type: COLLISION_STARTED,
-                                action: 'console.log("${hitmesh.name")'
-                            }
-                        }
-                      }
-                    ]
-                },
-                {
-                    id: generateUUID(),
-                    name: 'sword',
-                    type: 'equipment',
-                    model_url: './models/sword.glb',
-                    materialInfo: { diffuse: "./textures/sword/sword.jpg", normal: "./textures/sword/swordnormal.jpg", normal: "./textures/sword/swordnormal.jpg", rough: "./textures/sword/swordrough.jpg"},
-                //   thumbnail_url: './image/${modelnName}.png', // could be generated with blender
-                    offset: {
-                        parent :"wrist",// Same between left and right?
-                        parentMeshId: "myDetail._id",
-                        position: {x: -0.02, y: -0.03, z:-0.08}, // relative to wrist
-                        scaling: .11, // uniform
-                        rotation: {x: 0.3118619785970446,y: -0.517518584933339, z: 0.6331840797317805, w: 0.48372982307105} // quaterion
-                    },
-                    actions: [                            
-                      {                                   
-                        name: 'trigger-bullet',
-                        trigger: 'distance(${IndexTip.postion}, ${wrist.position}) <= 0.09',        
-                        respawn_offset: { x:-2.5, y:.5,z: 0 },
-                        target_offset: {x:-15.5, y:.5, z:0},
-                        pos : "${respawn_offset} transformed ${equipment.pos}",
-                        dir : "${pos} - ${target_offset}",
-                        emit: { pos: {}, dir: {}, roomNum: {} },
-                        resulting_action: {
-                            model: {meshType: "sphere", diameter: .1},
-                            mass: .5,
-                            force: 10,        
-                            // starting pos: <from message>, dir: <from message>,        
-                            // timeout: {1500, "${equipment.state.isReloading}=true" -> "${equipment.state.isReloading}=false"}
-                            collisioncallback: {
-                                // type: COLLISION_STARTED,
-                                action: 'console.log("${hitmesh.name")'
-                            }
-                        }
-                      }
-                  ]
-                },
-            ]
-        }
+        const playerDetail = createPlayerDetail(data, socket.id)
+        playerDetail.equipment = await loadEquipment(createRandomNum(1))
+
         socket.join(roomNum)
         room.players.push(playerDetail)
 
@@ -260,13 +152,14 @@ io.on("connection", socket => {
         setTimeout(() => {
             socket.emit("scene-updated", rooms.get(roomNum).sceneDescription)
         }, 2000)
-        log(`${data.name} has joined room ${roomNum}`)
+        log(`${data.name} joined room ${roomNum}`)
         // socket.emit('player', playerDetail)
         // io.emit('players-details', players)
     })
     socket.on("create-something", data => {
 
-        const {roomNum, entityType,materialInfo, entityUrl, entityId, parentMeshId, modelName} = data
+        const {offset, roomNum, entityType,materialInfo, entityUrl, entityId, parentMeshId, modelName} = data
+        
         const room = rooms.get(roomNum)
         if(!room) return log('room not found')
         const entity = room.sceneDescription.find(entity => entity._id === entityId)
@@ -277,8 +170,9 @@ io.on("connection", socket => {
             type: entityType,// "equipment",
             url:  entityUrl, //"./models/sword.glb",
             materialInfo,
-            pos: {x:-0.02, y:-0.03, z:-0.08},
-            scale: {x:.11,y:.11,z:.11},
+            // pos: {x:-0.02, y:-0.03, z:-0.08},
+            pos: offset.position,
+            scale: {x:offset.scaling,y:offset.scaling,z:offset.scaling},
             dir: {x:0,y:0,z:0},
             isVisible: true,
             parentMeshId,

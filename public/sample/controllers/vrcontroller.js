@@ -1,3 +1,4 @@
+import { runItemActions } from "../actions/vractions.js"
 import { displayTxt } from "../createDisplay.js"
 import { createShape, importCustomModel, setMeshesVisibility, setMeshPos } from "../creations.js"
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel, openClosePanel } from "../guitool/gui3dtool.js"
@@ -94,7 +95,9 @@ export async function initVrStickControls(scene, xr){
                 let interval = setInterval(() => {
                     // log("searching for both hands")
                     if(r_wrist || l_wrist) { clearInterval(interval)
-                        menuScreen = createMenuVTwo(scene, false)
+                        const panel = createMenuVTwo(scene, false)
+                        menuScreen = panel.mainPanel
+                        log(menuScreen)
                         tipBx = MeshBuilder.CreateSphere("asd", { diameter: .2/10, segments: 4}, scene);tipBx.isVisible =false
                         // const screen = createMenuVOne(scene, false)
                         menuScreen.isVisible = false
@@ -103,8 +106,6 @@ export async function initVrStickControls(scene, xr){
                         })
                         const r_wrist_btn = createButtonForHand("Menu", r_wrist, scene, tipBx, () => {
                             // screen.isVisible = !screen.isVisible
-                           
-                            
                             // screen.lookAt(cam.getFrontPosition(.1),0,0,0)
                             // screen.isVisible ? xr.pointerSelection.attach() : xr.pointerSelection.detach()
 
@@ -115,6 +116,7 @@ export async function initVrStickControls(scene, xr){
                                 // chldControl.isVisible = !chldControl.isVisible
                                 openClosePanel(chldControl, menuScreen.isVisible)
                             })
+                            if(menuScreen.isVisible) panel.openItems()
                         })
                         r_wrist_btn.position = new Vector3(0,-2,0)
                         r_wrist_btn.addRotation(-Math.PI/2, Math.PI,0)                    }
@@ -229,45 +231,37 @@ export async function initVrStickControls(scene, xr){
 
                     cam.position.y = myChar.headBone.getAbsolutePosition().y
                     
-                    let indxAndWristDist = Vector3.Distance(r_indxTip.position, r_wrist.position)
-                    if(indxAndWristDist <= 0.17){
-                        const gunMesh = scene.getMeshByName(`gun.${myChar._id}`)                        
-                        
-                        if(gunMesh && gunMesh.isVisible){
-                            if(isReloading) return
-                            isReloading = true
+                    runItemActions(scene, socket, r_indxTip,r_wrist)
 
-                            const respawnPos = Vector3.TransformCoordinates(new Vector3(-2.5,.5,0), gunMesh.computeWorldMatrix(true))
-                            const targDir = Vector3.TransformCoordinates(new Vector3(-12,.5,0), gunMesh.computeWorldMatrix(true))
-                            // const normalizedV = new Vector3(targDir.x - respawnPos.x, targDir.y-respawnPos.y, targDir.z - respawnPos.z).normalize()
-                            const bulletDir = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
-                            // const bx = createShape({size:.1, depth: .3}, respawnPos, "bxo")
-                            // bx.lookAt(new Vector3(targDir.x, targDir.y, targDir.z),0,0,0)
-                            // setTimeout(() => bx.dispose(), 100)
-                            log(bulletDir)
-                            socket.emit("trigger-bullet", { 
-                                pos: {x: respawnPos.x, y: respawnPos.y, z: respawnPos.z},
-                                dir: bulletDir,
-                                roomNum: getMyDetail().roomNum
-                            })
+                    // let indxAndWristDist = Vector3.Distance(r_indxTip.position, r_wrist.position)
+                    // if(indxAndWristDist <= 0.17){
+                    //     const gunMesh = scene.getMeshByName(`gun.${myChar._id}`)                   
+                        
+                    //     if(gunMesh && gunMesh.isVisible){
+                    //         if(isReloading) return
+                    //         isReloading = true
+
+                    //         const respawnPos = Vector3.TransformCoordinates(new Vector3(-2.5,.5,0), gunMesh.computeWorldMatrix(true))
+                    //         const targDir = Vector3.TransformCoordinates(new Vector3(-12,.5,0), gunMesh.computeWorldMatrix(true))
                             
-                            clearTimeout(reloadingTimeout)
-                            reloadingTimeout = setTimeout(() => {
-                                isReloading = false
-                            }, 1500)
-                        }
+                    //         const bulletDir = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
+                         
+                    //         socket.emit("trigger-bullet", { 
+                    //             pos: {x: respawnPos.x, y: respawnPos.y, z: respawnPos.z},
+                    //             dir: bulletDir,
+                    //             roomNum: getMyDetail().roomNum
+                    //         })
+                            
+                    //         clearTimeout(reloadingTimeout)
+                    //         reloadingTimeout = setTimeout(() => {
+                    //             isReloading = false
+                    //         }, 1500)
+                    //     }                        
+                    //     return 
+                    // }
+                    
 
-                        
-                        // const bx = createShape({size:.1, depth: .3}, respawnPos, "bxo")
-                        // bx.lookAt(new Vector3(targDir.x, targDir.y, targDir.z),0,0,0)
-                        // setTimeout(() => bx.dispose(), 100)
-                        // text1.text = `resPos: ${respawnPos.x, respawnPos.y, respawnPos.z}`
-                        
-                        return 
-                    }
-
-                    if(indxAndMiddleDistance <= 0.02){
-                       
+                    if(indxAndMiddleDistance <= 0.02){                       
                         // emitMove({
                         //     _id: myChar._id,
                         //     movement: { moveX: 0, moveZ: 1 },

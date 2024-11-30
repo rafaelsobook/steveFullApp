@@ -1,7 +1,8 @@
-import {createBullet, importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
+import {createBullet, createShape, importCustomModel, parentAMesh, setMeshesVisibility } from "../creations.js"
 // import { getInitialPlayer } from "../dropdown.js"
 import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
+import { createAggregate } from "../physics/aggregates.js"
 import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScene, getThingsInScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
 
 
@@ -120,7 +121,7 @@ export function initializeRoom() {
         if(itemOnScene){
             if(desc.isVisible !== undefined){
                 itemOnScene.MeshBuilder
-                setMeshesVisibility(itemOnScene.mesh.getChildren(), desc.isVisible)
+                setMeshesVisibility([itemOnScene.mesh], desc.isVisible)
             }
             // log(desc.name, desc.isVisible)
         }
@@ -143,7 +144,42 @@ export function initializeRoom() {
     })
   })
   socket.on("trigger-bullet", data => {
-    createBullet(data.pos, data.dir)
+    const {pos,dir,resulting_action} = data
+    const {model, mass, force, collisioncallback } = resulting_action
+    const bullet = createShape({ diameter: model.diameter}, {x:pos.x, y:pos.y, z: pos.z}, "name", model.meshType)
+   
+
+    const agg = createAggregate(bullet, {mass}, model.meshType)
+    const vel = new Vector3(dir.x*force, dir.y*force, dir.z*force)
+    // log(vel)
+    agg.body.applyImpulse(vel, bullet.getAbsolutePosition())
+    if(collisioncallback){
+      agg.body.setCollisionCallbackEnabled(true)   
+      agg.body.getCollisionObservable().add( e => {
+  
+          if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
+              const hitMesh = e.collidedAgainst.transformNode
+              // agg.body.setLinearDamping(1)
+              agg.body.setCollisionCallbackEnabled(false)
+              log(agg.shape.material.restitution)
+              agg.shape.material.restitution = 0
+              agg.body.setLinearDamping(5)
+              agg.body.applyImpulse(new Vector3(0,-5,0), bullet.getAbsolutePosition())
+              
+              if(hitMesh.name.includes("ground")){
+                  // agg.body.setLinearDamping(14)
+                  // agg.body.setCollisionCallbackEnabled(false)
+              }
+              eval(collisioncallback.action)
+              setTimeout(() => {
+                  bullet.dispose()
+                  agg.body.dispose()
+              }, 2500)
+          }
+      })
+    }
+
+    // createBullet(data.pos, data.dir)
   })
   // VR player move hands
   socket.on("player-moved-hands", playersInRoom => {

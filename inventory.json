@@ -1,0 +1,82 @@
+[    
+    {
+        "id": "shouldberandom431",
+        "name": "sword",
+        "type": "equipment",
+        "model_url": "./models/sword.glb", 
+        "materialInfo": {
+            "diffuse": "./textures/sword/sword.jpg",
+            "normal": "./textures/sword/swordnormal.jpg",
+            "rough": "./textures/sword/swordrough.jpg"
+        },
+        "offset": {
+            "parent": "wrist",
+            "parentMeshId": "myDetail._id",
+            "position": {"x": -0.02, "y": -0.03, "z": -0.08},
+            "scaling": 0.11,
+            "rotation": {
+                "x": 0.3118619785970446,
+                "y": -0.517518584933339,
+                "z": 0.6331840797317805,
+                "w": 0.48372982307105
+            }
+        },
+        "actions": [
+            {
+                "name": "trigger-collision  ",
+                "trigger": "collision",
+                "respawn_offset": {"x": -2.5, "y": 0.5, "z": 0},
+                "target_offset": {"x": -15.5, "y": 0.5, "z": 0},
+                "pos": "${respawn_offset} transformed ${equipment.pos}",
+                "dir": "${pos} - ${target_offset}",
+                "emit": {"pos": {}, "dir": {}, "roomNum": {}},
+                "resulting_action": {
+                    "model": {"meshType": "sphere", "diameter": 0.1},
+                    "mass": 0.5,
+                    "force": 10,
+                    "collisioncallback": {
+                        "action": "console.log(\"${hitMesh.name\")"
+                    }
+                }
+            }
+        ]
+    },
+    {
+        "id": "shouldberandom5231",
+        "name": "gun",
+        "type": "equipment",
+        "model_url": "./models/gun.glb", 
+        "materialInfo": false,
+        "offset": {
+            "parent": "wrist",
+            "parentMeshId": "myDetail._id",
+            "position": {"x": -0.02, "y": -0.03, "z": -0.08},
+            "scaling": 0.11,
+            "rotation": {
+                "x": 0.3118619785970446,
+                "y": -0.517518584933339,
+                "z": 0.6331840797317805,
+                "w": 0.48372982307105
+            }
+        },
+        "actions": [
+            {
+                "name": "trigger-bullet",
+                "trigger": "Vector3.Distance(r_indxTip.position, r_wrist.position) > .131",
+                "respawn_offset": {"x": -2.5, "y": 0.5, "z": 0},
+                "target_offset": {"x": -15.5, "y": 0.5, "z": 0},
+                "pos": "${respawn_offset} transformed ${equipment.pos}",
+                "dir": "${pos} - ${target_offset}",
+                "emit": {"pos": {}, "dir": {}, "roomNum": {}},
+                "resulting_action": {
+                    "model": {"meshType": "sphere", "diameter": 0.1},
+                    "mass": 0.5,
+                    "force": 10,
+                    "collisioncallback": {
+                        "action": "console.log(hitMesh.name)"
+                    }
+                }
+            }
+        ]
+    }
+]

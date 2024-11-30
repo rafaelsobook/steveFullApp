@@ -1,4 +1,5 @@
 import { getScene } from "../scenes/createScene.js"
+import { assignGroup } from "./filterGroup.js"
 
 const { PhysicsAggregate , PhysicsShapeType } = BABYLON
 

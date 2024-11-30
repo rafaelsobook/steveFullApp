@@ -1,6 +1,7 @@
 import { getGizmo, setGizmo } from "./guitool/gizmos.js";
 import { create3DGuiManager, createThreeDBtn, createThreeDPanel } from "./guitool/gui3dtool.js";
 import { createAggregate } from "./physics/aggregates.js";
+import { assignGroup, FILTER_GROUP_OWNER_CAPSULE } from "./physics/filterGroup.js";
 import { getScene } from "./scenes/createScene.js";
 import { getMyDetail } from "./socket/socketLogic.js";
 
@@ -70,6 +71,7 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     playerAgg.body.setMassProperties({inertia: new Vector3(0,0,0)})
     playerAgg.body.disablePreStep = false
     playerAgg.body.setLinearDamping(10)
+    assignGroup(playerAgg, FILTER_GROUP_OWNER_CAPSULE)
 
     mainBody.lookAt(new Vector3(dir.x, mainBody.position.y, dir.z), 0, 0, 0)
     mainBody.isVisible = false
@@ -184,6 +186,7 @@ export function createShape(opt, pos, name, meshType, _enableActionManager){
         break
     }
     mesh.checkCollisions = true
+    
     if(pos) mesh.position = new Vector3(pos.x,pos.y,pos.z)
     if(_enableActionManager) mesh.actionManager = new ActionManager(getScene())
     return mesh
@@ -194,7 +197,7 @@ export function createBullet(respawnPos, targetDirection){
 
     const agg = createAggregate(bullet, {mass: .5}, "sphere")
     const vel = new Vector3(targetDirection.x*force, targetDirection.y*force, targetDirection.z*force)
-    log(vel)
+    // log(vel)
     agg.body.applyImpulse(vel, bullet.getAbsolutePosition())
     agg.body.setCollisionCallbackEnabled(true)
    
@@ -203,7 +206,7 @@ export function createBullet(respawnPos, targetDirection){
         if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
             const hitMesh = e.collidedAgainst.transformNode
             agg.body.setLinearDamping(1)
-            if(hitMesh) log(hitMesh.name)
+            // if(hitMesh) log(hitMesh.name)
             if(hitMesh.name.includes("ground")){
                 agg.body.setLinearDamping(14)
                 agg.body.setCollisionCallbackEnabled(false)

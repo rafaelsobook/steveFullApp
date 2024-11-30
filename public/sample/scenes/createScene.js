@@ -9,10 +9,10 @@ import { createGizmo, createMat, createShape, createPlayer, importCustomModel, i
 import { attachToGizmoArray } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
 import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
-import { createMenuVTwo } from '../guitool/vrui.js'
 import { getCharacter, getState, setState } from '../index.js'
 import { createAggregate } from '../physics/aggregates.js'
 import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
+import { assignGroup, filterCollideMask, FILTER_GROUP_OWNER_CAPSULE, FILTER_GROUP_REMOTE_DESCRIPTION } from '../physics/filterGroup.js'
 
 const log = console.log
 
@@ -26,6 +26,8 @@ let vrHands = {
     right: undefined,
     left: undefined
 }
+
+let itemCollideTimeout = {} // a key value for item that collided needs to be disabled and then after certain sec collision will be enabled again. this is because when not turned off the collision is lagging the browser because of continues collision to self
 
 export function getScene() {
     return scene
@@ -268,13 +270,15 @@ export function checkSceneModels(){
             const {pos,scale,rotQ, _id,physicsInfo, materialInfo} = socketModel
             const modelAlreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
             if (modelAlreadyHere) {                        
-                if(socketModel.parentMeshId){
+                if(socketModel.parentMeshId){ // for equipments
                     const mesh = modelAlreadyHere.mesh
                     const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                     if(parentPlayer) {
+                        if(modelAlreadyHere.aggregate) modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(true)
                         parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
                     } else {
-                        if(mesh.getChildren().length) setMeshesVisibility(mesh.getChildren(), false)
+                        if(modelAlreadyHere.aggregate) modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(false)
+                        if(mesh) setMeshesVisibility([mesh], false)
                     }
                 }else{
                     // log(`already created in scene ${socketModel._id}`)
@@ -357,8 +361,7 @@ export function checkSceneModels(){
                         mat.diffuseTexture.uScale = materialInfo.uAndVScale
                         mat.diffuseTexture.vScale = materialInfo.uAndVScale
                         model.material = mat
-                    }
-                    
+                    }                    
             
                     model.position = new Vector3(pos.x,pos.y,pos.z)
                     model.scaling = new Vector3(scale.x,scale.y,scale.z)
@@ -370,6 +373,7 @@ export function checkSceneModels(){
                     if(physicsInfo.enabled){
                         const agg = createAggregate(model, {mass: physicsInfo.mass}, physicsInfo.physicsType)
                         agg.body.disablePreStep = false
+                        assignGroup(agg, FILTER_GROUP_REMOTE_DESCRIPTION)
                     }
                 // rotation implement here
                 }
@@ -418,30 +422,62 @@ export function checkSceneModels(){
                     // this mesh will only be part of modelscene after the async so on the top this mesh will always not be created
                     // so after this mesh finish on creating the model will check again if there is a duplicate mesh
                     importCustomModel(socketModel.url).then( model => {        
-       
+                        log(socketModel)
                         const Root = model.meshes[0]
                         const alreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
                         if(alreadyHere) {
                             model.meshes.forEach(mesh => mesh.dispose())
                             return Root.dispose()
                         }
+                        const mergeableMeshes = model.meshes.filter(mesh => mesh.name !== "__root__");
+                        mergeableMeshes.forEach(mesh =>{
+                            mesh.parent = null                           
+                            if(mesh.getVerticesData(BABYLON.VertexBuffer.MatricesWeightsKind)){
+                                mesh.setVerticesData(BABYLON.VertexBuffer.TangentKind, null, false);
+                            }
+                        })
+                        Root.dispose()
+                        var mainMesh = BABYLON.Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
+                        mainMesh.name = `${socketModel.modelName}.${socketModel.parentMeshId}`
 
-                        if(materialInfo){
-                            model.meshes[1].material = createMat(scene, socketModel.modelName, materialInfo.diffuse, materialInfo.normal,materialInfo.rough)
+                        log("creating physics for " + mainMesh.name)
+                        const agg = createAggregate(mainMesh, {mass:0}, "mesh")
+                        // agg.body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC)
+                        if(socketModel.modelName.includes("sword")){
+                            agg.body.disablePreStep = false
+                            agg.body.setCollisionCallbackEnabled(true)
+                            agg.body.getCollisionObservable().add( e => {
+                                if(mainMesh && !mainMesh.isVisible) return log("not visible")
+                                const hitMesh = e.collidedAgainst.transformNode
+                                const ownerCapsuleName = `player.${mainMesh.name.split(".")[1]}`
+                                // log(hitMesh.name)
+                                // log(ownerCapsuleName)
+                                if(hitMesh.name === ownerCapsuleName) return log("colliding with owner")
+                                if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
+                                    log(`i hit ${hitMesh.name}`)                                
+                                }
+                            })
                         }
-
-                        model.meshes[1].name = `${socketModel.modelName}.${socketModel.parentMeshId}`
-                        setMeshesVisibility(Root.getChildren(), socketModel.isVisible)
-                        modelsInScene.push({...socketModel, mesh: Root})
+                        
+                        // filterCollideMask(agg, FILTER_GROUP_REMOTE_DESCRIPTION)
+                        if(materialInfo){
+                            mainMesh.material = createMat(scene, socketModel.modelName, materialInfo.diffuse, materialInfo.normal,materialInfo.rough)
+                        }
+                        
+                        setMeshesVisibility([mainMesh], socketModel.isVisible)
+                        modelsInScene.push({...socketModel, mesh: mainMesh, aggregate: agg})
 
                         if(socketModel.parentMeshId){
                             const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                             if(parentPlayer){
-                                parentAMesh(Root, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
+                                parentPlayer.playerAgg
+                                // assignGroup(parentPlayer.playerAgg, FILTER_GROUP_OWNER_CAPSULE)
+                                parentAMesh(mainMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
                             } else {
-                                setMeshesVisibility(Root.getChildren(), false)
+                                setMeshesVisibility([mainMesh], false)
                             }
                         }
+                        
                     }).catch(error => log(error))
                 }                
             }
