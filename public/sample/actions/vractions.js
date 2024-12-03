@@ -21,10 +21,11 @@ export function runItemActions(scene, socket, r_indxTip, r_wrist) {
                     if(!itemMesh.isVisible) return log("item is not visible")
                     log(itemMesh.isVisible)
                     
-                    const respwnOffset = action.respawn_offset
-                    const targOffset = action.target_offset
-                    const respawnPos = Vector3.TransformCoordinates(new Vector3(respwnOffset.x,respwnOffset.y,respwnOffset.z), itemMesh.computeWorldMatrix(true))
-                    const targDir = Vector3.TransformCoordinates(new Vector3(targOffset.x,targOffset.y,targOffset.z), itemMesh.computeWorldMatrix(true))
+                    const respawn_offset = action.respawn_offset
+                    const target_offset = action.target_offset
+                    
+                    const respawnPos = eval(action.pos)
+                    const targDir = eval(action.dir)
 
                     const bulletDir = { x: targDir.x - respawnPos.x, y: targDir.y-respawnPos.y, z: targDir.z - respawnPos.z}
 

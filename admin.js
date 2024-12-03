@@ -1,7 +1,7 @@
 const {loadUsers, hashPassword, saveChanges} = require("./login.js")
 const readline = require('readline');
-const { generateUUID } = require("./tools.js");
 const encryptor = require('./encryption');
+const { v4: uuidv4 } = require('uuid');
 
 let users = [];
 
@@ -117,7 +117,7 @@ function createUser() {
                 
                 // Add the new user with the hashed password
                 users.push({ 
-                    id: generateUUID(), 
+                    id: uuidv4(), 
                     username: username.trim(),
                     hash: hashedPassword
                 });

@@ -40,6 +40,7 @@
             color: green;
         }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/uuid@latest/dist/umd/uuidv4.min.js"></script>
 </head>
 <body>
 <h2>Room Configuration</h2>
@@ -89,14 +90,6 @@
 <script>
     let currentId = '';
 
-    function generateUUID() {
-        return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-            const r = Math.random() * 16 | 0;
-            const v = c == 'x' ? r : (r & 0x3 | 0x8);
-            return v.toString(16);
-        });
-    }
-
     function getUrlParameter(name) {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get(name);
@@ -105,7 +98,7 @@
     // Initialize display fields
     function initializeDisplayFields() {
         const modelUrl = getUrlParameter('model');
-        currentId = generateUUID();
+        currentId = uuidv4();
 
         document.getElementById('idDisplay').textContent = currentId;
         document.getElementById('typeDisplay').textContent = 'remoteurl';

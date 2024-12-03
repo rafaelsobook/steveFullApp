@@ -2,15 +2,9 @@ const fs = require("fs");
 const path = require("path");
 const util = require('util');
 const readFile = util.promisify(fs.readFile);
+const { v4: uuidv4 } = require('uuid');
 const log = console.log
 
-function generateUUID() {
-    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
-        var r = Math.random() * 16 | 0,
-            v = c === 'x' ? r : (r & 0x3 | 0x8);
-        return v.toString(16);
-    });
-}
 function createRandomID(){
     return Math.random().toLocaleString().split(".")[1] //
 }
@@ -20,7 +14,7 @@ function createRandomNum(_maxNumber){
 function createPlayerDetail(data, socketId){
     const {name, roomNumber, avatarUrl } = data
     return {
-        _id: generateUUID(),
+        _id: uuidv4(),
         name: name,
         socketId,
         loc: {
@@ -57,13 +51,19 @@ function createPlayerDetail(data, socketId){
 }
 async function loadEquipment(number) {
     try {
-        const jsonString = await readFile(path.join(__dirname, "inventory.json"), 'utf8');
+        // Validate input
+        if (![0, 1, 2].includes(number)) {
+            throw new Error('Invalid inventory number. Must be 0, 1, or 2');
+        }
+        
+        const inventoryFile = `inventory${number}.json`;
+        const jsonString = await readFile(path.join(__dirname, inventoryFile), 'utf8');
         const data = JSON.parse(jsonString);
-        const item = data[number];
-        item.id = generateUUID()
-        return [item]
+
+        return data;
     } catch (err) {
-        console.log(err);
+        console.log(`Error loading inventory${number}.json:`, err);
+        return []; // Return empty array on error
     }
 }
-module.exports = { generateUUID, createRandomID, createPlayerDetail, loadEquipment,createRandomNum }
+module.exports = { createRandomID, createPlayerDetail, loadEquipment,createRandomNum }

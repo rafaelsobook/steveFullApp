@@ -277,7 +277,10 @@ export function checkSceneModels(){
                         if(modelAlreadyHere.aggregate) modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(true)
                         parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
                     } else {
-                        if(modelAlreadyHere.aggregate) modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(false)
+                        if(modelAlreadyHere.aggregate) {
+                            modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(false)
+                            modelAlreadyHere.aggregate.body.disable()
+                        }
                         if(mesh) setMeshesVisibility([mesh], false)
                     }
                 }else{
@@ -474,6 +477,10 @@ export function checkSceneModels(){
                                 // assignGroup(parentPlayer.playerAgg, FILTER_GROUP_OWNER_CAPSULE)
                                 parentAMesh(mainMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
                             } else {
+                                
+                                // agg.body.setCollisionCallbackEnabled(false)
+                                agg.body.disable()
+                                
                                 setMeshesVisibility([mainMesh], false)
                             }
                         }

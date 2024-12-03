@@ -34,6 +34,7 @@
         background-color: #0056b3;
       }
     </style>
+    <script src="https://cdn.jsdelivr.net/npm/uuid@latest/dist/umd/uuidv4.min.js"></script>
   </head>
   <body>
     <h1>User Registration</h1>
@@ -48,21 +49,12 @@
     </form>
 
     <script>
-      function generateUUID() {
-        return ([1e7] + -1e3 + -4e3 + -8e3 + -1e11).replace(/[018]/g, (c) =>
-          (
-            c ^
-            (crypto.getRandomValues(new Uint8Array(1))[0] & (15 >> (c / 4)))
-          ).toString(16)
-        );
-      }
-
       document
         .getElementById("registrationForm")
         .addEventListener("submit", async (event) => {
           event.preventDefault(); // Prevent default form submission
 
-          const id = generateUUID();
+          const id = uuidv4();
           const username = document.getElementById("username").value;
           const password = document.getElementById("password").value;
 

@@ -6,6 +6,7 @@ const express = require("express")
 const app = express()
 const bodyParser = require('body-parser');
 const cookieParser = require('cookie-parser');
+const { v4: uuidv4 } = require('uuid');
 
 const config = require('./config')
 const { Server } = require("socket.io")
@@ -13,7 +14,7 @@ const {login, loadUsers, hashPassword, saveChanges} = require("./login.js")
 
 const PORT = process.env.PORT || config.port
 const log = console.log
-const { generateUUID, createRandomID, createPlayerDetail, loadEquipment, createRandomNum} = require("./tools.js");
+const { createRandomID, createPlayerDetail, loadEquipment, createRandomNum} = require("./tools.js");
 const {getRoom, saveChangeDescription} = require("./room.js")
 const { ok } = require('assert');
 
@@ -81,7 +82,6 @@ async function saveAuthTokens() {
 }
 
 function getUser(req){
-    
     log("cookies... ", req.cookies, typeof req.cookies)
     const authToken = req.cookies.authToken 
     // Check if the authToken exists and is valid
@@ -138,7 +138,7 @@ io.on("connection", socket => {
         if (room.limit <= room.players.length) return log(48, "players full")
 
         const playerDetail = createPlayerDetail(data, socket.id)
-        playerDetail.equipment = await loadEquipment(createRandomNum(1))
+        playerDetail.equipment = await loadEquipment(createRandomNum(99)%3)
 
         socket.join(roomNum)
         room.players.push(playerDetail)
@@ -379,7 +379,7 @@ app.post('/login/authenticate', async (req, res) => {
     const { isPasswordValid, account } = await login(username, password);
 
     if (isPasswordValid) {
-        const authToken = generateUUID()
+        const authToken = uuidv4()
         
         res.cookie('authToken', authToken, {
             httpOnly: false,

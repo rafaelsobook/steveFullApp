@@ -4,7 +4,7 @@ import { attachToGizmoArray, changeGizmo, getGizmo } from "../guitool/gizmos.js"
 import { getState, main, setState } from "../index.js"
 import { createAggregate } from "../physics/aggregates.js"
 import { blendAnimv2, checkPlayers, checkSceneModels, getPlayersInScene, getScene, getThingsInScene, playerDispose, rotateAnim } from "../scenes/createScene.js"
-
+import { v4 as uuidv4 } from 'https://jspm.dev/uuid';
 
 const { MeshBuilder, Vector3, Space, Quaternion, GizmoManager } = BABYLON
 const log = console.log
@@ -161,7 +161,7 @@ export function initializeRoom() {
               const hitMesh = e.collidedAgainst.transformNode
               // agg.body.setLinearDamping(1)
               agg.body.setCollisionCallbackEnabled(false)
-              log(agg.shape.material.restitution)
+              // log(agg.shape.material.restitution)
               agg.shape.material.restitution = 0
               agg.body.setLinearDamping(5)
               agg.body.applyImpulse(new Vector3(0,-5,0), bullet.getAbsolutePosition())
@@ -346,14 +346,7 @@ export function initializeRoom() {
 // let socket = io('');
 
 
-  function generateUUID() {
-    // Use the crypto API for randomness
-    return ([1e7]+-1e3+-4e3+-8e3+-1e11).replace(/[018]/g, c =>
-      (c ^ crypto.getRandomValues(new Uint8Array(1))[0] & 15 >> c / 4).toString(16)
-    );
-  }
-
-  // TODO: userVideo and peerVideos need 
+  const id = uuidv4();
 
   let iceServers = {
     iceServers: [
@@ -491,7 +484,7 @@ export function initializeRoom() {
     userVideo = setUpCamera(
       scene, 
       stream, 
-      generateUUID(), // Need to make random
+      id, // Need to make random
       {x:4,y:1,z:4}  
     )
 
