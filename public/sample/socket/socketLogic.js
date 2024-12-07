@@ -527,7 +527,7 @@ export function initializeRoom() {
   });
 
   socket.on("offer", function (offer) {
-    if (creator) {
+    if (!creator) {
       rtcPeerConnection = new RTCPeerConnection(iceServers);
       rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
       rtcPeerConnection.ontrack = OnTrackFunction;
