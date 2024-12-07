@@ -94,10 +94,11 @@ export async function initVrStickControls(scene, xr){
                 let menuScreen = undefined
                 let interval = setInterval(() => {
                     // log("searching for both hands")
-                    if(r_wrist || l_wrist) { clearInterval(interval)
+                    if(r_wrist || l_wrist) { 
+                        clearInterval(interval)
                         const panel = createMenuVTwo(scene, false)
                         menuScreen = panel.mainPanel
-                        log(menuScreen)
+
                         tipBx = MeshBuilder.CreateSphere("asd", { diameter: .2/10, segments: 4}, scene);tipBx.isVisible =false
                         // const screen = createMenuVOne(scene, false)
                         menuScreen.isVisible = false

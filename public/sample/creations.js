@@ -53,6 +53,16 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     const avatar = instance.meshes[1]
     const skeleton = instance.skeletons[0]
 
+    // const mergeableMeshes = instance.meshes.filter(mesh => mesh.name !== "__root__");
+    // mergeableMeshes.forEach(mesh =>{
+    //     // mesh.parent = null                          
+    //     if(mesh.getVerticesData(BABYLON.VertexBuffer.MatricesWeightsKind)){
+    //         mesh.setVerticesData(BABYLON.VertexBuffer.TangentKind, null, false);
+    //     }
+    // })
+    // var mainMesh = Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
+    // log(mainMesh.name)
+
     let neckNode
     let headBone
     let targetPoint
@@ -62,10 +72,23 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         if(boneName === "head") headBone = bone.getTransformNode()
         if(boneName.includes("neck")){
             // const boneNode = bone.getTransformNode()
-            neckNode = skeleton.bones[bone.getIndex()+1].getTransformNode()
+            neckNode = skeleton.bones[bone.getIndex()+1].getTransformNode()// the same as head bone delete in future
         }
     })
-    
+
+    // create bone IK
+    // let handikCtrl = new BoneIKController(
+    //     avatar,
+    //     headBone,
+    //     {                
+    //         poleAngle: 0,
+    //         targetMesh: control
+    //     }
+    // );
+    // ikCtrls.push(handikCtrl);
+    // handikCtrl.update()
+    // handikCtrl.maxAngle = Math.PI * .9
+
     const mainBody = createShape({ height: 2, capSubdivisions: 1}, {x: loc.x, y: loc.y+1, z: loc.z}, `player.${_id}`, "capsule")
     const playerAgg = createAggregate(mainBody, {mass: .1}, "capsule")
     playerAgg.body.setMassProperties({inertia: new Vector3(0,0,0)})

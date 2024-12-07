@@ -117,7 +117,7 @@ io.use((socket, next) => {
         return next(new Error('Unauthorized'));
     }
     const user = authTokenToUser.get(authToken);
-    socket.user = user
+    // socket.user = user
     log("Authorized ! ", user)
     next();
 });
@@ -319,18 +319,19 @@ io.on("connection", socket => {
         log(data)
     })
     // Video and Audio
-    socket.on("join", function (roomName) {
+    socket.on("join", function (d) {
+        const {roomName, mediaType, data} = d
         let rooms2 = io.sockets.adapter.rooms;
         let room = rooms2.get(roomName);
 
         //room == undefined when no such room exists.
         if (room == undefined) {
           socket.join(roomName);
-          socket.emit("created");
-        } else if (room.size == 1) {
+          socket.emit("created", {mediaType, data});
+        } else if (room.size >= 1) {
           //room.size == 1 when one person is inside the room.
           socket.join(roomName);
-          socket.emit("joined");
+          socket.emit("joined", {mediaType, data});
         } else {
           //when there are already two people inside the room.
           socket.emit("full");

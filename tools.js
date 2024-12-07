@@ -13,15 +13,16 @@ function createRandomNum(_maxNumber){
 }
 function createPlayerDetail(data, socketId){
     const {name, roomNumber, avatarUrl } = data
+    const spawnPoint = {
+        x: -2 + Math.random() * 3,
+        y: 1, // height of a box is 2 half of it is 1
+        z: 0,//-2 + Math.random()*3
+    }
     return {
         _id: uuidv4(),
         name: name,
         socketId,
-        loc: {
-            x: -2 + Math.random() * 3,
-            y: 1, // height of a box is 2 half of it is 1
-            z: 0,//-2 + Math.random()*3
-        },
+        loc: spawnPoint,
         movement: {
             moveX: 0,
             moveZ: 0

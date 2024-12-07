@@ -18,7 +18,7 @@ const urlParams = new URLSearchParams(window.location.search);
 const roomNumber = urlParams.get('room');
 let userStream;
 // let muteFlag = false;
-let mediaType = "camera"; // can be "camera", "screen", or "audio"
+let mediaType = "audio"; // can be "camera", "screen", or "audio"
 let userVideo;
 let peerVideos = []
 let creator = false;
@@ -384,17 +384,19 @@ export function initializeRoom() {
   }
 
 
-  socket.on("created", async function () {
+  socket.on("created", async function (d) {
+    const {mediaType, data} = d
     creator = true;
-    await getAndSetUserMedia();
-  });
+    await getAndSetUserMedia(mediaType, data);
+  }); 
 
-  socket.on("joined", async function () {
+  socket.on("joined", async function (d) {
+    const {mediaType, data} = d
     creator = false;
-    await getAndSetUserMedia();
+    await getAndSetUserMedia(mediaType, data);
   });
 
-  async function getAndSetUserMedia() {
+  async function getAndSetUserMedia(mediaType, data) {
     let mediaPromise;
 
     switch (mediaType) {
@@ -426,7 +428,7 @@ export function initializeRoom() {
   }
 
   function setUpCamera(scene, stream, _id, pos){
-    console.log(getScene())
+
     const engine = getScene().getEngine()
 
     // TODO check if video tag exists before trying to create it
@@ -452,6 +454,7 @@ export function initializeRoom() {
     TV.rotate(BABYLON.Axis.Z, Math.PI, BABYLON.Space.WORLD);
     TV.rotate(BABYLON.Axis.Y, Math.PI, BABYLON.Space.WORLD);
     TV.actionManager = new BABYLON.ActionManager(scene);
+    attachToGizmoArray(TV)
 
 
     // Video material
@@ -466,7 +469,6 @@ export function initializeRoom() {
     var htmlVideo = videoTexture.video;
 
     // video.srcObject = stream;
-    engine.hideLoadingUI();
     video.addEventListener('loadedmetadata',function() {
         TV.actionManager.registerAction(
             new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger,
@@ -478,7 +480,7 @@ export function initializeRoom() {
     return video
   }
   function setUpStream(stream) {
-
+    const id = uuidv4();
     userStream = stream;
 
     userVideo = setUpCamera(
@@ -501,22 +503,22 @@ export function initializeRoom() {
   });
 
   socket.on("ready", function () {
-    if (creator) {
-      rtcPeerConnection = new RTCPeerConnection(iceServers);
-      rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
-      rtcPeerConnection.ontrack = OnTrackFunction;
-      userStream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, userStream));
+    // if (creator) {
+    rtcPeerConnection = new RTCPeerConnection(iceServers);
+    rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
+    rtcPeerConnection.ontrack = OnTrackFunction;
+    userStream.getTracks().forEach(track => rtcPeerConnection.addTrack(track, userStream));
 
-      rtcPeerConnection
-        .createOffer()
-        .then((offer) => {
-          rtcPeerConnection.setLocalDescription(offer);
-          socket.emit("offer", offer, roomNumber);
-        })
-        .catch((error) => {
-          console.log(error);
-        });
-    }
+    rtcPeerConnection
+      .createOffer()
+      .then((offer) => {
+        rtcPeerConnection.setLocalDescription(offer);
+        socket.emit("offer", offer, roomNumber);
+      })
+      .catch((error) => {
+        console.log(error);
+      });
+    // }
   });
 
   socket.on("candidate", function (candidate) {
@@ -525,7 +527,7 @@ export function initializeRoom() {
   });
 
   socket.on("offer", function (offer) {
-    if (!creator) {
+    if (creator) {
       rtcPeerConnection = new RTCPeerConnection(iceServers);
       rtcPeerConnection.onicecandidate = OnIceCandidateFunction;
       rtcPeerConnection.ontrack = OnTrackFunction;
@@ -613,6 +615,35 @@ export function emitVideoStop() {
     rtcPeerConnection = null;
   }
 };
+export function emitAudioJoin(type, data) {
+  if (roomNumber == "") {
+    alert("room is expected as a parameter in the url");
+  } else {
+    mediaType = type;
+    socket.emit("join", {roomNumber, mediaType:type, data});
+    console.log("Join Room")
+  }
+}
+export function emitAudioStop(type, data) {  
+  socket.emit("leave", roomNumber);
+  
+  if (userVideo.srcObject) {
+    userVideo.srcObject.getTracks().forEach(track => track.stop());
+  }
+  peerVideos.forEach(peerVideo => {
+    if (peerVideo.srcObject) {
+      peerVideo.srcObject.getTracks().forEach(track => track.stop());
+    }
+  })
+
+  if (rtcPeerConnection) {
+    rtcPeerConnection.ontrack = null;
+    rtcPeerConnection.onicecandidate = null;
+    rtcPeerConnection.close();
+    rtcPeerConnection = null;
+  }
+};
+
 // Movement emits
 export function emitMove(movementDetail) {
 
@@ -643,6 +674,7 @@ function updateImportedModels(_newModels) {
   checkSceneModels()
 }
 export function getMyDetail() {
+  
   return myDetail
 }
 export function getAllPlayersInSocket() {

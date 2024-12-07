@@ -2,7 +2,7 @@ const {Quaternion,Color3, Space,Axis, SkyMaterial,Debug, BoneIKController, Gizmo
 
 import { initKeyControls } from '../controllers/keycontroller.js'
 import { initJoyStick } from '../controllers/thumbController.js'
-import { initCameraControl } from '../controllers/cameraController.js'
+import { initAudioControl } from '../controllers/audioController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
 import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
 // import { getSelectedImmMode } from '../dropdown.js'
@@ -13,7 +13,7 @@ import { getCharacter, getState, setState } from '../index.js'
 import { createAggregate } from '../physics/aggregates.js'
 import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 import { assignGroup, filterCollideMask, FILTER_GROUP_OWNER_CAPSULE, FILTER_GROUP_REMOTE_DESCRIPTION } from '../physics/filterGroup.js'
-
+import { setImmersiveState } from '../immersive/immersiveState.js'
 const log = console.log
 
 let players = []
@@ -67,7 +67,14 @@ export async function createScene(_engine) {
         },
         disableTeleportation: true
     })
-
+    xrHelper.baseExperience.onStateChangedObservable.add(state => {
+        
+        if(state === BABYLON.WebXRState.IN_XR) {
+            setImmersiveState(sessionMode)
+        }else if(state === BABYLON.WebXRState.NOT_IN_XR) {
+            setImmersiveState("browser")
+        }
+    })
     await scene.whenReadyAsync()
     create3DGuiManager(scene)
     setState("GAME")
@@ -76,7 +83,7 @@ export async function createScene(_engine) {
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)
-    initCameraControl(getSocket(), cam)
+    initAudioControl(getSocket(), cam)
     initKeyControls(scene)
     await initVrStickControls(scene, xrHelper)
 
@@ -440,48 +447,50 @@ export function checkSceneModels(){
                             }
                         })
                         Root.dispose()
-                        var mainMesh = BABYLON.Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
-                        mainMesh.name = `${socketModel.modelName}.${socketModel.parentMeshId}`
+                        var equipmentMesh = BABYLON.Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
+                        // setting mesh name
+                        equipmentMesh.name = `${socketModel._id}.${socketModel.parentMeshId}`
 
-                        log("creating physics for " + mainMesh.name)
-                        const agg = createAggregate(mainMesh, {mass:0}, "mesh")
+                        log("creating physics for " + equipmentMesh.name)
+                        const agg = createAggregate(equipmentMesh, {mass:0}, "mesh")
                         // agg.body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC)
                         if(socketModel.modelName.includes("sword")){
                             agg.body.disablePreStep = false
                             agg.body.setCollisionCallbackEnabled(true)
                             agg.body.getCollisionObservable().add( e => {
-                                if(mainMesh && !mainMesh.isVisible) return log("not visible")
+                                if(equipmentMesh && !equipmentMesh.isVisible) return log("not visible")
                                 const hitMesh = e.collidedAgainst.transformNode
-                                const ownerCapsuleName = `player.${mainMesh.name.split(".")[1]}`
+                                const ownerCapsuleName = `player.${equipmentMesh.name.split(".")[1]}`
                                 // log(hitMesh.name)
                                 // log(ownerCapsuleName)
                                 if(hitMesh.name === ownerCapsuleName) return log("colliding with owner")
                                 if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
                                     log(`i hit ${hitMesh.name}`)                                
+                                    log(`i hit ${hitMesh.id}`)                                
                                 }
                             })
                         }
                         
                         // filterCollideMask(agg, FILTER_GROUP_REMOTE_DESCRIPTION)
                         if(materialInfo){
-                            mainMesh.material = createMat(scene, socketModel.modelName, materialInfo.diffuse, materialInfo.normal,materialInfo.rough)
+                            equipmentMesh.material = createMat(scene, socketModel.modelName, materialInfo.diffuse, materialInfo.normal,materialInfo.rough)
                         }
                         
-                        setMeshesVisibility([mainMesh], socketModel.isVisible)
-                        modelsInScene.push({...socketModel, mesh: mainMesh, aggregate: agg})
+                        setMeshesVisibility([equipmentMesh], socketModel.isVisible)
+                        modelsInScene.push({...socketModel, mesh: equipmentMesh, aggregate: agg})
 
                         if(socketModel.parentMeshId){
                             const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                             if(parentPlayer){
                                 parentPlayer.playerAgg
                                 // assignGroup(parentPlayer.playerAgg, FILTER_GROUP_OWNER_CAPSULE)
-                                parentAMesh(mainMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
+                                parentAMesh(equipmentMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
                             } else {
                                 
                                 // agg.body.setCollisionCallbackEnabled(false)
                                 agg.body.disable()
                                 
-                                setMeshesVisibility([mainMesh], false)
+                                setMeshesVisibility([equipmentMesh], false)
                             }
                         }
                         

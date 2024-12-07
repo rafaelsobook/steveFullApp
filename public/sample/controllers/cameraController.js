@@ -8,23 +8,23 @@ export function initCameraControl(socket, cam) {
 
     let adt = GUI.AdvancedDynamicTexture.CreateFullscreenUI("CameraUI");
     
-    // Create a simple rectangular button
+
+
+
     const cameraButton = new GUI.Rectangle("cameraButton");
+    // cameraButton.addControl(buttonImage);
     cameraButton.width = "60px";
     cameraButton.height = "60px";
-    cameraButton.thickness = 2;
-    cameraButton.background = "red";
-    cameraButton.color = "white";
+    cameraButton.thickness = 0;
     cameraButton.cornerRadius = 5;
     cameraButton.isPointerBlocker = true;
-    cameraButton.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    cameraButton.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_LEFT;
     cameraButton.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
     cameraButton.right = "50px";
     cameraButton.top = "-50px";
-
+    cameraButton.background = "yellow";
     cameraButton.onPointerDownObservable.add(function () {
         isActive = !isActive;
-        cameraButton.background = isActive ? "green" : "red";
         
         camDir = cam.getForwardRay().direction;
 

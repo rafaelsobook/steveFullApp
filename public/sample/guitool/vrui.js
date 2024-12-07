@@ -1,3 +1,4 @@
+import { toggleAudio } from "../controllers/audioController.js"
 import { randomNumToStr, setMeshesVisibility } from "../creations.js"
 import { getThingsInScene } from "../scenes/createScene.js"
 import { getMyDetail, getSocket } from "../socket/socketLogic.js"
@@ -61,30 +62,32 @@ export function createMenuVTwo(scene, _meshParent, _pos){
                     roomNum: myDetail.roomNum,
                     modelName: name
                 })
-                return log("item already on scene do not create")
+                log(`${name} already on scene do not create instead toggle visibility`)
+            }else{
+                socket.emit("create-something",{
+                    roomNum: myDetail.roomNum, 
+                    entityType: type, 
+                    entityUrl: model_url, 
+                    entityId: id, 
+                    parentMeshId: myDetail._id,
+                    modelName: name,
+                    materialInfo: equipment.materialInfo,
+                    offset
+                })
             }
-            socket.emit("create-something",{
-                roomNum: myDetail.roomNum, 
-                entityType: type, 
-                entityUrl: model_url, 
-                entityId: id, 
-                parentMeshId: myDetail._id,
-                modelName: name,
-                materialInfo: equipment.materialInfo,
-                offset
-            })
         })
     })    
 
-    const soundBtn = createThreeDBtn(bottomPanel, "Sound", 46, .05)
+    const audioBtn = createThreeDBtn(bottomPanel, "Audio", 46, .05)
     const arvrBtn = createThreeDBtn(bottomPanel, "AR/VR", 46, .05)
-    settingsBtns.push(soundBtn)
+    settingsBtns.push(audioBtn)
     settingsBtns.push(arvrBtn)
 
     itemsBtn.onPointerUpObservable.add(function(){
-        settingsBtns.forEach(btn => bottomPanel.removeControl(btn))
-        itemsBtns.forEach(btn => bottomPanel.addControl(btn))
-        bottomPanel.updateLayout()
+        openItems()
+        // settingsBtns.forEach(btn => bottomPanel.removeControl(btn))
+        // itemsBtns.forEach(btn => bottomPanel.addControl(btn))
+        // bottomPanel.updateLayout()
         // openCloseControls(itemsBtns, true)
         // openCloseControls(settingsBtns, false, () => {
         //     settingsBtns.forEach(btn => bottomPanel.removeControl(btn))
@@ -92,13 +95,13 @@ export function createMenuVTwo(scene, _meshParent, _pos){
         // })
         // bottomPanel.updateLayout()
         // log(bottomPanel.children.length)
-    });  
-
+    });
     settingsBtn.onPointerUpObservable.add(function(){
-        itemsBtns.forEach(btn => bottomPanel.removeControl(btn))
-        settingsBtns.forEach(btn => bottomPanel.addControl(btn))
+        openSettings()
+        // itemsBtns.forEach(btn => bottomPanel.removeControl(btn))
+        // settingsBtns.forEach(btn => bottomPanel.addControl(btn))
         
-        bottomPanel.updateLayout()
+        // bottomPanel.updateLayout()
         // openCloseControls(itemsBtns, false)
         // openCloseControls(settingsBtns, true, () => {
         //     itemsBtns.forEach(btn => bottomPanel.removeControl(btn))
@@ -107,6 +110,9 @@ export function createMenuVTwo(scene, _meshParent, _pos){
         // bottomPanel.updateLayout()
         // log(bottomPanel.children.length)
     });  
+    audioBtn.onPointerUpObservable.add(function(){
+        toggleAudio(scene.activeCamera)
+    })
     function openItems(){
         settingsBtns.forEach(btn => bottomPanel.removeControl(btn))
         itemsBtns.forEach(btn => bottomPanel.addControl(btn))

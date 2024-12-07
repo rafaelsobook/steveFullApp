@@ -23,8 +23,8 @@
                 "trigger": "Vector3.Distance(r_indxTip.position, r_wrist.position) <= .131",
                 "respawn_offset": {"x": -2.5, "y": 0.5, "z": 0},
                 "target_offset": {"x": -15.5, "y": 0.5, "z": 0},
-                "pos": "Vector3.TransformCoordinates(new Vector3(respawn_offset.x,respawn_offset.y,respawn_offset.z), itemMesh.computeWorldMatrix(true))",
-                "dir": "Vector3.TransformCoordinates(new Vector3(target_offset.x,target_offset.y,target_offset.z), itemMesh.computeWorldMatrix(true))",
+                "pos": "var respawn_offset = action.respawn_offset; Vector3.TransformCoordinates(new Vector3(respawn_offset.x,respawn_offset.y,respawn_offset.z), itemMesh.computeWorldMatrix(true))",
+                "dir": "var target_offset = action.target_offset; Vector3.TransformCoordinates(new Vector3(target_offset.x,target_offset.y,target_offset.z), itemMesh.computeWorldMatrix(true))",
                 "emit": {"pos": {}, "dir": {}, "roomNum": {}},
                 "resulting_action": {
                     "model": {"meshType": "sphere", "diameter": 0.1},
