@@ -1,4 +1,4 @@
-import { getGizmo, setGizmo } from "./guitool/gizmos.js";
+import { attachToGizmoArray, changeGizmo, getGizmo, setGizmo } from "./guitool/gizmos.js";
 import { create3DGuiManager, createThreeDBtn, createThreeDPanel } from "./guitool/gui3dtool.js";
 import { createAggregate } from "./physics/aggregates.js";
 import { assignGroup, FILTER_GROUP_OWNER_CAPSULE } from "./physics/filterGroup.js";
@@ -63,31 +63,6 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     // var mainMesh = Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
     // log(mainMesh.name)
 
-    let neckNode
-    let headBone
-    let targetPoint
-    skeleton.bones.forEach(bone => {
-        const boneName = bone.name.toLowerCase()
- 
-        if(boneName === "head") headBone = bone.getTransformNode()
-        if(boneName.includes("neck")){
-            // const boneNode = bone.getTransformNode()
-            neckNode = skeleton.bones[bone.getIndex()+1].getTransformNode()// the same as head bone delete in future
-        }
-    })
-
-    // create bone IK
-    // let handikCtrl = new BoneIKController(
-    //     avatar,
-    //     headBone,
-    //     {                
-    //         poleAngle: 0,
-    //         targetMesh: control
-    //     }
-    // );
-    // ikCtrls.push(handikCtrl);
-    // handikCtrl.update()
-    // handikCtrl.maxAngle = Math.PI * .9
 
     const mainBody = createShape({ height: 2, capSubdivisions: 1}, {x: loc.x, y: loc.y+1, z: loc.z}, `player.${_id}`, "capsule")
     const playerAgg = createAggregate(mainBody, {mass: .1}, "capsule")
@@ -109,6 +84,51 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         scene.activeCamera.beta = 1    
         // panel.linkToTransformNode(mainBody)
     }
+
+    const sphere = createShape({diameter: .1}, {x:0,y:0,z:0}, "rightHandGizmo", "sphere")
+    
+    sphere.parent = mainBody
+    sphere.position = new Vector3(.2,.1,.3)
+    let neckNode
+    let headBone
+    let targetPoint
+    skeleton.bones.forEach(bone => {
+        const boneName = bone.name.toLowerCase()
+        if(boneName === "righthand") {
+            const rightHandBone = bone.getTransformNode()           
+            
+            attachToGizmoArray(sphere)
+            changeGizmo(true)
+
+            // create bone IK
+            let handikCtrl = new BoneIKController(
+                root,
+                bone,
+                {                
+                    poleAngle: Math.PI/2,
+                    targetMesh: sphere
+                }
+            );
+            ikCtrls.push(handikCtrl);
+            handikCtrl.update()
+            handikCtrl.maxAngle = Math.PI * .9
+            let isIKActive = true
+            setInterval(() => {
+                isIKActive = !isIKActive
+            }, 2000)
+            scene.onBeforeRenderObservable.add(() => {
+                handikCtrl.update()
+            })
+        }
+
+
+
+        if(boneName === "head") headBone = bone.getTransformNode()
+        if(boneName.includes("neck")){
+            // const boneNode = bone.getTransformNode()
+            neckNode = skeleton.bones[bone.getIndex()+1].getTransformNode()// the same as head bone delete in future
+        }
+    })
 
     const rotationAnimation = new Animation("rotationAnimation", "rotation.y", 60, Animation.ANIMATIONTYPE_FLOAT, Animation.ANIMATIONLOOPMODE_CONSTANT);
     root.animations[0] = rotationAnimation

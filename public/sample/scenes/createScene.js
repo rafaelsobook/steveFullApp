@@ -14,6 +14,7 @@ import { createAggregate } from '../physics/aggregates.js'
 import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDetail, getSocket } from '../socket/socketLogic.js'
 import { assignGroup, filterCollideMask, FILTER_GROUP_OWNER_CAPSULE, FILTER_GROUP_REMOTE_DESCRIPTION } from '../physics/filterGroup.js'
 import { setImmersiveState } from '../immersive/immersiveState.js'
+import { createInventoryUI2D } from '../inventory.js'
 const log = console.log
 
 let players = []
@@ -46,8 +47,8 @@ export async function createScene(_engine) {
         right: rHand,
         left: lHand
     }
-    bylonUIInit()
-
+    const ADT = bylonUIInit()
+    createInventoryUI2D(ADT)
     createGizmo(scene, false, true, false, false, false)
 
     await importAnimations("idle_anim.glb")
@@ -83,7 +84,7 @@ export async function createScene(_engine) {
     getCharacter()
 
     initJoyStick(getSocket(), cam, scene)
-    initAudioControl(getSocket(), cam)
+    initAudioControl(cam)
     initKeyControls(scene)
     await initVrStickControls(scene, xrHelper)
 

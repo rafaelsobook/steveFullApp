@@ -1,9 +1,9 @@
 import { toggleAudio } from "../controllers/audioController.js"
 import { randomNumToStr, setMeshesVisibility } from "../creations.js"
-import { getThingsInScene } from "../scenes/createScene.js"
-import { getMyDetail, getSocket } from "../socket/socketLogic.js"
+import {  getSocket } from "../socket/socketLogic.js"
 import { create3DGuiManager, createThreeDBtn, createThreeDPanel, openCloseControls } from "./gui3dtool.js"
 import { createGrid, createRect, createTxt } from "./guitool.js"
+import { createInventoryUIForVR } from "../inventory.js"
 
 const {MeshBuilder, GUI, Vector3} = BABYLON
 const log = console.log
@@ -43,45 +43,14 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     
     // creating buttons for menu icons category
     const itemsBtn = createThreeDBtn(topPanel, "ITEMS", 49, .06)
-    const settingsBtn = createThreeDBtn(topPanel, "SETTINGS", 49, .06)
-    
-    const myDetail = getMyDetail()
-    myDetail.equipment.forEach(equipment => {
-        const {id, name, type, model_url, offset} = equipment
-        const holographBtn = createThreeDBtn(bottomPanel, name, 46, .05, `./images/${name}.png`)
-        holographBtn.id = id
-        itemsBtns.push(holographBtn)
-        bottomPanel.updateLayout()
-        holographBtn.onPointerUpObservable.add( () => {
-            
-            const itemOnScene = getThingsInScene().find(itm =>itm._id === id)
-            if(itemOnScene) {
-                socket.emit("toggle-visibility", 
-                {
-                    entityId: id,
-                    roomNum: myDetail.roomNum,
-                    modelName: name
-                })
-                log(`${name} already on scene do not create instead toggle visibility`)
-            }else{
-                socket.emit("create-something",{
-                    roomNum: myDetail.roomNum, 
-                    entityType: type, 
-                    entityUrl: model_url, 
-                    entityId: id, 
-                    parentMeshId: myDetail._id,
-                    modelName: name,
-                    materialInfo: equipment.materialInfo,
-                    offset
-                })
-            }
-        })
-    })    
+    const settingsBtn = createThreeDBtn(topPanel, "SETTINGS", 49, .06)  
 
     const audioBtn = createThreeDBtn(bottomPanel, "Audio", 46, .05)
     const arvrBtn = createThreeDBtn(bottomPanel, "AR/VR", 46, .05)
     settingsBtns.push(audioBtn)
     settingsBtns.push(arvrBtn)
+
+    itemsBtns = createInventoryUIForVR(bottomPanel)
 
     itemsBtn.onPointerUpObservable.add(function(){
         openItems()

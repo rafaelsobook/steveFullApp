@@ -1,7 +1,7 @@
 module.exports = {
   port: 5173,
   isHttps: false,
-  ENCRYPTED_GITHUB_TOKEN: "1053747bdc16570ab6287a530d0711c3:09f2da450cfed55e2bdf4a8a51d7049b265d0f2134853b606d20a9db8ef6806537bd07bd1e35fe25:7a87ea77a643edcd427b0567c5d1d17f",
+  ENCRYPTED_GITHUB_TOKEN: "86b8ee947cd42b8625a429b2a50ab6e5:14fce256a6ed8511aff4c086ad117767180183603e01dcc4568347ff3d00dad2c3e7f855aaa454ba:1d3c67e75d8a67b6abcf3f9978d6f8a5",
   REPO_OWNER: "rafaelsobook",
   REPO_NAME: "blobdatas",
   FILE_PATH: "accounts.csv",

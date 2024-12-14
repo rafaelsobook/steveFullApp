@@ -16,7 +16,8 @@ export function bylonUIInit() {
     Ggrid = G.Grid
     GRect = G.Rectangle
     GCheckBx = G.Checkbox
-    // if (!ADT) ADT = G.AdvancedDynamicTexture("ADT_GUI")
+    if (!ADT) ADT = G.AdvancedDynamicTexture.CreateFullscreenUI("ADT_GUI")
+    return ADT
 }
 export function createBtn(btnLabel, _ADTexture, buttonImg, _width, _height, _fontS, _background) {
     let btn
@@ -96,7 +97,7 @@ export function createRect(_childUI, _defWidthInNum, _defHeightInNum, _ADTexture
     return rect
 }
 export function createTxt(_textLabel, _fontSize, _color) {
-    const textBlock = new GUI.TextBlock("textblock", _textLabel)
+    const textBlock = new GText("textblock", _textLabel)
     textBlock.color = _color ? _color : "white"
     textBlock.fontSize = _fontSize ? _fontSize : "40px"
     return textBlock
@@ -136,6 +137,42 @@ export function createGuiImg(imageName, _imgUrl){
 
     return image        
 }
+
+export function createButtonImage(pathToImage, callBackWhenPressed){
+    if (!ADT) ADT = G.AdvancedDynamicTexture.CreateFullscreenUI("ADT_GUI")
+    // Create a simple rectangular button
+    const buttonImage = new GUI.Image("micButton", pathToImage);
+    buttonImage.stretch = GUI.Image.STRETCH_UNIFORM;
+    buttonImage.width = "40px";  // Adjust size as needed
+    buttonImage.height = "40px"; // Adjust size as needed
+
+    // Create a simple rectangular button
+    const rectangle = new GUI.Rectangle("cameraButton");
+    rectangle.addControl(buttonImage);
+    rectangle.width = "60px";
+    rectangle.height = "60px";
+    rectangle.thickness = 2;
+    // cameraButton.background = "red";
+    rectangle.color = "black";
+    rectangle.cornerRadius = 5;
+    rectangle.isPointerBlocker = true;
+    rectangle.horizontalAlignment = GUI.Control.HORIZONTAL_ALIGNMENT_RIGHT;
+    rectangle.verticalAlignment = GUI.Control.VERTICAL_ALIGNMENT_BOTTOM;
+    rectangle.left = "-50px";
+    rectangle.top = "-50px";
+
+    if(callBackWhenPressed){
+        rectangle.onPointerDownObservable.add(function () {
+            callBackWhenPressed()
+        });
+    }
+
+
+    ADT.addControl(rectangle);
+    return { buttonImage, rectangle}
+}
+
+
 
 // VR Related
 export function createButtonForHand(buttonLabel, parentMesh, scene, toCollide, callbackWhenPressed){

@@ -12,7 +12,7 @@ function createRandomNum(_maxNumber){
     return Math.floor(Math.random()*(_maxNumber+1))
 }
 function createPlayerDetail(data, socketId){
-    const {name, roomNumber, avatarUrl } = data
+    const { name, roomNumber, avatarUrl } = data
     const spawnPoint = {
         x: -2 + Math.random() * 3,
         y: 1, // height of a box is 2 half of it is 1

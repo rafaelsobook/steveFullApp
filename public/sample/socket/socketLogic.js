@@ -673,8 +673,7 @@ function updateImportedModels(_newModels) {
   importedModelsInServer = _newModels
   checkSceneModels()
 }
-export function getMyDetail() {
-  
+export function getMyDetail() {  
   return myDetail
 }
 export function getAllPlayersInSocket() {
