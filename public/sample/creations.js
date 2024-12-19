@@ -53,15 +53,14 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
     const avatar = instance.meshes[1]
     const skeleton = instance.skeletons[0]
 
-    // const mergeableMeshes = instance.meshes.filter(mesh => mesh.name !== "__root__");
-    // mergeableMeshes.forEach(mesh =>{
-    //     // mesh.parent = null                          
-    //     if(mesh.getVerticesData(BABYLON.VertexBuffer.MatricesWeightsKind)){
-    //         mesh.setVerticesData(BABYLON.VertexBuffer.TangentKind, null, false);
-    //     }
-    // })
-    // var mainMesh = Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
-    // log(mainMesh.name)
+    // const skeletonViewer = new Debug.SkeletonViewer(
+    //     skeleton,         // The skeleton to visualize
+    //     root,           // The mesh associated with the skeleton
+    //     scene             // The scene
+    // );
+    // skeletonViewer.displayMode = Debug.SkeletonViewer.DISPLAY_SPHERE_AND_SPURS;
+    // skeletonViewer.update();
+    // skeletonViewer.isEnabled = true; // Enable the skeleton viewer
 
 
     const mainBody = createShape({ height: 2, capSubdivisions: 1}, {x: loc.x, y: loc.y+1, z: loc.z}, `player.${_id}`, "capsule")
@@ -85,19 +84,26 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         // panel.linkToTransformNode(mainBody)
     }
 
-    const sphere = createShape({diameter: .1}, {x:0,y:0,z:0}, "rightHandGizmo", "sphere")
-    
-    sphere.parent = mainBody
-    sphere.position = new Vector3(.2,.1,.3)
+    const rightPoleTarget = createShape({size: .1}, {x:.22,y:.3,z:.5}, `rightPoleTarget.${_id}`)
+    const leftPoleTarget = createShape({size: .1}, {x:-.22,y:.3,z:.5}, `leftPoleTarget.${_id}`)
+    rightPoleTarget.isVisible = false
+    leftPoleTarget.isVisible = false
+    rightPoleTarget.parent = mainBody
+    leftPoleTarget.parent = mainBody
+
     let neckNode
     let headBone
-    let targetPoint
+    let avatarRightBone
+    let avatarLeftBone
     skeleton.bones.forEach(bone => {
         const boneName = bone.name.toLowerCase()
+        if(boneName === "lefthand"){
+            avatarLeftBone = bone.getTransformNode()  
+        }
         if(boneName === "righthand") {
-            const rightHandBone = bone.getTransformNode()           
+            avatarRightBone = bone.getTransformNode()           
             
-            attachToGizmoArray(sphere)
+            attachToGizmoArray(rHandMesh)
             changeGizmo(true)
 
             // create bone IK
@@ -105,24 +111,13 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
                 root,
                 bone,
                 {                
-                    poleAngle: Math.PI/2,
-                    targetMesh: sphere
+                    poleAngle: Math.PI,
+                    targetMesh: rightPoleTarget
                 }
             );
             ikCtrls.push(handikCtrl);
-            handikCtrl.update()
-            handikCtrl.maxAngle = Math.PI * .9
-            let isIKActive = true
-            setInterval(() => {
-                isIKActive = !isIKActive
-            }, 2000)
-            scene.onBeforeRenderObservable.add(() => {
-                handikCtrl.update()
-            })
+            handikCtrl.maxAngle = Math.PI - .1
         }
-
-
-
         if(boneName === "head") headBone = bone.getTransformNode()
         if(boneName.includes("neck")){
             // const boneNode = bone.getTransformNode()
@@ -174,11 +169,17 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
         lHand,
         rHandMesh,
         lHandMesh,
-        rHandBones,
-        lHandBones,
+        rHandBones, // the VR Right Hand Bones
+        lHandBones, // the VR Left Hand Bones,
+        avatarRightBone, // the Avatar Right Hand Bone
+        avatarLeftBone, // the Avatar Left Hand Bone
+        rightPoleTarget,
+        leftPoleTarget,
         neckNode,
         headBone,
-
+        ikCtrls,
+        immersiveState: detail.immersiveState,
+        rightIKActive: detail.rightIKActive,
         footRayCast,
     }
 }

@@ -47,6 +47,8 @@ function createPlayerDetail(data, socketId){
         avatarUrl,
         roomNum:roomNumber,
         controller: undefined, //key//joystick//vr//teleport
+        immersiveState: "browser", // by default you are in browser
+        rightIKActive: false,
         currentSpd: 1.3
     }
 }

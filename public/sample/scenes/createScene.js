@@ -6,7 +6,7 @@ import { initAudioControl } from '../controllers/audioController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
 import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
 // import { getSelectedImmMode } from '../dropdown.js'
-import { attachToGizmoArray } from '../guitool/gizmos.js'
+import { attachToGizmoArray, changeGizmo, setGizmo } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
 import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
 import { getCharacter, getState, setState } from '../index.js'
@@ -15,6 +15,7 @@ import { emitMove, getAllImportedModelsInSocket, getAllPlayersInSocket, getMyDet
 import { assignGroup, filterCollideMask, FILTER_GROUP_OWNER_CAPSULE, FILTER_GROUP_REMOTE_DESCRIPTION } from '../physics/filterGroup.js'
 import { setImmersiveState } from '../immersive/immersiveState.js'
 import { createInventoryUI2D } from '../inventory.js'
+import { initPointerDown } from '../controllers/pointerDown.js'
 const log = console.log
 
 let players = []
@@ -86,11 +87,15 @@ export async function createScene(_engine) {
     initJoyStick(getSocket(), cam, scene)
     initAudioControl(cam)
     initKeyControls(scene)
+    initPointerDown(scene)
     await initVrStickControls(scene, xrHelper)
 
     scene.registerBeforeRender(() => {      
         const deltaT = _engine.getDeltaTime() / 1000
-        players.forEach(pl => {            
+        players.forEach(pl => {
+            if(pl.immersiveState === "browser" && pl.rightIKActive){
+                pl.ikCtrls.forEach(ik => ik.update())
+            }     
             if (pl._moving) {
                 switch(pl.controller){
                     case "key":
@@ -275,20 +280,27 @@ export function checkSceneModels(){
     const sceneDescription = getAllImportedModelsInSocket()
     if (sceneDescription.length) {
         sceneDescription.forEach(socketModel => {
-            const {pos,scale,rotQ, _id,physicsInfo, materialInfo} = socketModel
+            const {pos,scale,rotQ, _id,physicsInfo, materialInfo, immersiveState} = socketModel
+
             const modelAlreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
-            if (modelAlreadyHere) {                        
+            if (modelAlreadyHere) {    
                 if(socketModel.parentMeshId){ // for equipments
+         
                     const mesh = modelAlreadyHere.mesh
                     const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
-                    if(parentPlayer) {
+                    if(parentPlayer) {                        
                         if(modelAlreadyHere.aggregate) modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(true)
-                        parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
-                    } else {
-                        if(modelAlreadyHere.aggregate) {
-                            modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(false)
-                            modelAlreadyHere.aggregate.body.disable()
+                        
+                        if(immersiveState === "browser"){
+                            const rotqY = Quaternion.FromEulerAngles(0,0,-Math.PI/2);
+                            parentAMesh(mesh, parentPlayer.avatarRightBone, {x:0, y:.1, z:.05}, .11, {x:rotqY.x,y:rotqY.y,z:rotqY.z,w:rotqY.w})
+                        }else{
+                            parentAMesh(mesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
                         }
+                    } else {
+                        // if(modelAlreadyHere.aggregate) {
+                        //     modelAlreadyHere.aggregate.body.setCollisionCallbackEnabled(false)
+                        // }
                         if(mesh) setMeshesVisibility([mesh], false)
                     }
                 }else{
@@ -433,7 +445,7 @@ export function checkSceneModels(){
                     // this mesh will only be part of modelscene after the async so on the top this mesh will always not be created
                     // so after this mesh finish on creating the model will check again if there is a duplicate mesh
                     importCustomModel(socketModel.url).then( model => {        
-                        log(socketModel)
+
                         const Root = model.meshes[0]
                         const alreadyHere = modelsInScene.find(sceneModel => sceneModel._id === socketModel._id)
                         if(alreadyHere) {
@@ -451,26 +463,25 @@ export function checkSceneModels(){
                         var equipmentMesh = BABYLON.Mesh.MergeMeshes(mergeableMeshes, true, true, undefined, false, true);
                         // setting mesh name
                         equipmentMesh.name = `${socketModel._id}.${socketModel.parentMeshId}`
-
-                        log("creating physics for " + equipmentMesh.name)
-                        const agg = createAggregate(equipmentMesh, {mass:0}, "mesh")
-                        // agg.body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC)
-                        if(socketModel.modelName.includes("sword")){
-                            agg.body.disablePreStep = false
-                            agg.body.setCollisionCallbackEnabled(true)
-                            agg.body.getCollisionObservable().add( e => {
-                                if(equipmentMesh && !equipmentMesh.isVisible) return log("not visible")
-                                const hitMesh = e.collidedAgainst.transformNode
-                                const ownerCapsuleName = `player.${equipmentMesh.name.split(".")[1]}`
-                                // log(hitMesh.name)
-                                // log(ownerCapsuleName)
-                                if(hitMesh.name === ownerCapsuleName) return log("colliding with owner")
-                                if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
-                                    log(`i hit ${hitMesh.name}`)                                
-                                    log(`i hit ${hitMesh.id}`)                                
-                                }
-                            })
-                        }
+                        log(equipmentMesh.name)
+                        // const agg = createAggregate(equipmentMesh, {mass:0}, "mesh")
+                        // // agg.body.setMotionType(BABYLON.PhysicsMotionType.DYNAMIC)
+                        // if(socketModel.modelName.includes("sword")){
+                        //     agg.body.disablePreStep = false
+                        //     agg.body.setCollisionCallbackEnabled(true)
+                        //     agg.body.getCollisionObservable().add( e => {
+                        //         if(equipmentMesh && !equipmentMesh.isVisible) return log("not visible")
+                        //         const hitMesh = e.collidedAgainst.transformNode
+                        //         const ownerCapsuleName = `player.${equipmentMesh.name.split(".")[1]}`
+                        //         // log(hitMesh.name)
+                        //         // log(ownerCapsuleName)
+                        //         if(hitMesh.name === ownerCapsuleName) return log("colliding with owner")
+                        //         if(e.type === BABYLON.PhysicsEventType.COLLISION_STARTED){
+                        //             log(`i hit ${hitMesh.name}`)                                
+                        //             log(`i hit ${hitMesh.id}`)                                
+                        //         }
+                        //     })
+                        // }
                         
                         // filterCollideMask(agg, FILTER_GROUP_REMOTE_DESCRIPTION)
                         if(materialInfo){
@@ -478,19 +489,24 @@ export function checkSceneModels(){
                         }
                         
                         setMeshesVisibility([equipmentMesh], socketModel.isVisible)
-                        modelsInScene.push({...socketModel, mesh: equipmentMesh, aggregate: agg})
+                        modelsInScene.push({...socketModel, mesh: equipmentMesh, aggregate: false})
 
                         if(socketModel.parentMeshId){
                             const parentPlayer = players.find(pl => pl._id === socketModel.parentMeshId)
                             if(parentPlayer){
-                                parentPlayer.playerAgg
+                                
                                 // assignGroup(parentPlayer.playerAgg, FILTER_GROUP_OWNER_CAPSULE)
-                                parentAMesh(equipmentMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
-                            } else {
-                                
+                                // parentAMesh(equipmentMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})
+                                // agg.body.dispose()
+                                if(immersiveState === "browser"){
+                                    const rotqY = Quaternion.FromEulerAngles(0,0,-Math.PI/2);
+                                    parentAMesh(equipmentMesh, parentPlayer.avatarRightBone, {x:0, y:.1, z:.05}, .11, {x:rotqY.x,y:rotqY.y,z:rotqY.z,w:rotqY.w})  
+                                }else{
+                                    parentAMesh(equipmentMesh, parentPlayer.rHandMesh, {x:-0.02, y:-0.03, z:-0.08}, .11, {x:0.3118619785970446,y:-0.517518584933339,z:0.6331840797317805,w:0.48372982307105})  
+                                }
+                            } else {                                
                                 // agg.body.setCollisionCallbackEnabled(false)
-                                agg.body.disable()
-                                
+                                // agg.body.disable()                                
                                 setMeshesVisibility([equipmentMesh], false)
                             }
                         }

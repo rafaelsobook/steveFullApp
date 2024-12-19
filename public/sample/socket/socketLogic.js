@@ -100,7 +100,6 @@ export function initializeRoom() {
     }
   })
   socket.on('scene-updated', sceneDescriptionList => {
-    log("scene-updated ", sceneDescriptionList)
     const scene = getScene()
     if(!scene) return log("scene not ready")
     sceneDescriptionList.forEach( desc => {
@@ -113,17 +112,23 @@ export function initializeRoom() {
     })
 
   })
+  socket.on("update-player", newPlayerDetail => {
+    const player = getPlayersInScene().find(pl => pl._id === newPlayerDetail._id)
+    if(!player) return log("updating player not on scene")
+    log(`updating ${newPlayerDetail._id}`)
+    player.immersiveState = newPlayerDetail.immersiveState
+    player.rightIKActive = newPlayerDetail.rightIKActive
+  })
   socket.on("toggle-visibility", descriptions => {
     // log(getThingsInScene())
     // log(descriptions)
+
     descriptions.forEach(desc => {        
         const itemOnScene = getThingsInScene().find(itm =>itm._id === desc._id)
         if(itemOnScene){
             if(desc.isVisible !== undefined){
-                itemOnScene.MeshBuilder
                 setMeshesVisibility([itemOnScene.mesh], desc.isVisible)
             }
-            // log(desc.name, desc.isVisible)
         }
     })    
   })
@@ -189,7 +194,7 @@ export function initializeRoom() {
       const player = playersInScene.find(pl => pl._id === data._id)
       if (player) {
   
-        if(player._id !== getMyDetail()._id){
+        if(player._id !== getMyDetail()._id){ // only for others because you are already moving your hands real time
           const { wristPos , wristQuat, headDirection, fingerCoord} = data
       
           if(!wristPos || !wristQuat) return

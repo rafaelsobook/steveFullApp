@@ -139,6 +139,7 @@ io.on("connection", socket => {
 
         const playerDetail = createPlayerDetail(data, socket.id)
         playerDetail.equipment = await loadEquipment(createRandomNum(99)%3)
+        // playerDetail.equipment = await loadEquipment(0)
 
         socket.join(roomNum)
         room.players.push(playerDetail)
@@ -158,7 +159,8 @@ io.on("connection", socket => {
     })
     socket.on("create-something", data => {
 
-        const {offset, roomNum, entityType,materialInfo, entityUrl, entityId, parentMeshId, modelName} = data
+        const {offset, _id, roomNum, entityType,materialInfo, entityUrl, 
+        entityId, parentMeshId, modelName, immersiveState} = data
         
         const room = rooms.get(roomNum)
         if(!room) return log('room not found')
@@ -176,19 +178,39 @@ io.on("connection", socket => {
             dir: {x:0,y:0,z:0},
             isVisible: true,
             parentMeshId,
-            modelName
+            modelName, 
+            immersiveState
         })
+        const player = room.players.find(pl => pl._id === _id)
+        if(player){
+            if(immersiveState === "browser"){
+                player.rightIKActive = true
+                player.immersiveState = immersiveState
+                io.to(roomNum).emit("update-player", player)
+            }
+        }
 
         io.to(roomNum).emit("scene-updated", room.sceneDescription)
+        
     })
     socket.on("toggle-visibility", data => {
    
-        const {roomNum,entityId} = data
+        const {roomNum,entityId, _id, immersiveState} = data
         const room = rooms.get(roomNum)
+      
         if(!room) return log('room not found')
         const entity = room.sceneDescription.find(entity => entity._id === entityId)
+        
         if(entity) {
             entity.isVisible = !entity.isVisible
+            entity.immersiveState = immersiveState
+            const player = room.players.find(pl => pl._id === _id)
+            if(player){
+                if(immersiveState === "browser"){
+                    player.rightIKActive = entity.isVisible
+                    io.to(roomNum).emit("update-player", player)
+                }
+            }
             io.to(roomNum).emit("toggle-visibility", room.sceneDescription)
         }
     })
@@ -204,6 +226,7 @@ io.on("connection", socket => {
     })
     socket.on("trigger-bullet", data => {
         // const {roomNum, pos, dir } = data
+        log(data)
         io.to(data.roomNum).emit("trigger-bullet", data)
     })
     // movements

@@ -1,7 +1,9 @@
 import { createThreeDBtn } from "./guitool/gui3dtool.js"
 import { createButtonImage, createGrid, createRect, createTxt } from "./guitool/guitool.js"
+import { getImmersiveState } from "./immersive/immersiveState.js"
 import { getThingsInScene } from "./scenes/createScene.js"
 import { getSocket, getMyDetail } from "./socket/socketLogic.js"
+const log = console.log
 
 export function createInventoryUIForVR(parentPanelForButton){
     const myDetail = getMyDetail()
@@ -27,7 +29,8 @@ export function createInventoryUIForVR(parentPanelForButton){
                 {
                     entityId: id,
                     roomNum: myDetail.roomNum,
-                    modelName: name
+                    modelName: name,
+                    immersiveState: getImmersiveState()
                 })
                 log(`${name} already on scene do not create instead toggle visibility`)
             }else{
@@ -39,7 +42,8 @@ export function createInventoryUIForVR(parentPanelForButton){
                     parentMeshId: myDetail._id,
                     modelName: name,
                     materialInfo: equipment.materialInfo,
-                    offset
+                    offset,
+                    immersiveState: getImmersiveState()
                 })
             }
         })
@@ -82,13 +86,16 @@ export function createInventoryUI2D(ADT){
             if(itemOnScene) {
                 socket.emit("toggle-visibility", 
                 {
+                    _id: myDetail._id,
                     entityId: id,
                     roomNum: myDetail.roomNum,
-                    modelName: name
+                    modelName: name,
+                    immersiveState: getImmersiveState()
                 })
                 log(`${name} already on scene do not create instead toggle visibility`)
             }else{
                 socket.emit("create-something",{
+                    _id: myDetail._id,
                     roomNum: myDetail.roomNum, 
                     entityType: type, 
                     entityUrl: model_url, 
@@ -96,7 +103,8 @@ export function createInventoryUI2D(ADT){
                     parentMeshId: myDetail._id,
                     modelName: name,
                     materialInfo: equipment.materialInfo,
-                    offset
+                    offset,
+                    immersiveState: getImmersiveState()
                 })
             }
         })
