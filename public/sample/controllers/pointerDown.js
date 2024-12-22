@@ -7,6 +7,7 @@ const log = console.log
 let isReloading = {}
 let timeOutKeyId = {}
 
+// Created for gun specifically
 export function initPointerDown(scene){
     scene.onPointerObservable.add(() => {
         const myDetail = getMyDetail()
@@ -15,8 +16,7 @@ export function initPointerDown(scene){
         if(myPlayer && myPlayer.rightIKActive){
             
             myDetail.equipment.forEach(item => {
-                item.actions.forEach(action => {
-                    
+                item.actions.forEach(action => {                   
              
                     if(isReloading[item.name]) return
                     

@@ -101,10 +101,7 @@ export async function createPlayer(detail, animationsGLB, scene, vrHands) {
             avatarLeftBone = bone.getTransformNode()  
         }
         if(boneName === "righthand") {
-            avatarRightBone = bone.getTransformNode()           
-            
-            attachToGizmoArray(rHandMesh)
-            changeGizmo(true)
+            avatarRightBone = bone.getTransformNode()
 
             // create bone IK
             let handikCtrl = new BoneIKController(

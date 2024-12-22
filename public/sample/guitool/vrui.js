@@ -1,7 +1,7 @@
 import { toggleAudio } from "../controllers/audioController.js"
 import { randomNumToStr, setMeshesVisibility } from "../creations.js"
 import {  getSocket } from "../socket/socketLogic.js"
-import { create3DGuiManager, createThreeDBtn, createThreeDPanel, openCloseControls } from "./gui3dtool.js"
+import { create3DGuiManager, createThreeDBtn, createThreeDPanel, openCloseControls, openClosePanel } from "./gui3dtool.js"
 import { createGrid, createRect, createTxt } from "./guitool.js"
 import { createInventoryUIForVR } from "../inventory.js"
 
@@ -92,6 +92,12 @@ export function createMenuVTwo(scene, _meshParent, _pos){
         settingsBtns.forEach(btn => bottomPanel.addControl(btn))
         bottomPanel.updateLayout()
     }
+    function setVisibility(isVisible){
+        mainPanel.isVisible = isVisible
+        mainPanel.children.forEach(chldControl =>{
+            openClosePanel(chldControl, menuScreen.isVisible)
+        })
+    }
     // start the menu with item on the list
     // settingsBtns.forEach(btn => {
     //     bottomPanel.removeControl(btn)
@@ -108,7 +114,7 @@ export function createMenuVTwo(scene, _meshParent, _pos){
     //     btn.mesh.isVisible = false
     // })
     bottomPanel.updateLayout()
-    return {mainPanel, openItems, openSettings}
+    return {mainPanel, openItems, openSettings, setVisibility}
 }
 
 

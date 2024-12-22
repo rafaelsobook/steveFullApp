@@ -180,7 +180,6 @@ export function createButtonForHand(buttonLabel, parentMesh, scene, toCollide, c
     
     const btnMesh = MeshBuilder.CreatePlane(`button`,{width: 5, height: 5},scene);
     
-
     const collisionBx = MeshBuilder.CreateBox("asd", { size: .4, width: 1.5}, scene)
     collisionBx.parent = btnMesh
     collisionBx.isVisible = false

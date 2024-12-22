@@ -19,9 +19,7 @@ export function runItemActions(scene, socket, r_indxTip, r_wrist) {
                     
                     const itemMesh = scene.getMeshByName(`${item.id}.${myDetail._id}`)
                     if(!itemMesh) return log("item triggered not found")
-                    if(!itemMesh.isVisible) return log("item is not visible")
-                    log(itemMesh.isVisible)
-                    
+                    if(!itemMesh.isVisible) return log("item is not visible")                    
                     // const respawn_offset = action.respawn_offset
                     // const target_offset = action.target_offset
                     

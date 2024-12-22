@@ -6,7 +6,7 @@ import { initAudioControl } from '../controllers/audioController.js'
 import { getXrCam, initVrStickControls } from '../controllers/vrcontroller.js'
 import { createGizmo, createMat, createShape, createPlayer, importCustomModel, importModelContainer, parentAMesh, setMeshesVisibility, createBullet } from '../creations.js'
 // import { getSelectedImmMode } from '../dropdown.js'
-import { attachToGizmoArray, changeGizmo, setGizmo } from '../guitool/gizmos.js'
+import { attachToGizmoArray } from '../guitool/gizmos.js'
 import { create3DGuiManager, createNearMenu, createSlate, createThreeDBtn, createThreeDPanel } from '../guitool/gui3dtool.js'
 import { bylonUIInit, createCheckBox } from '../guitool/guitool.js'
 import { getCharacter, getState, setState } from '../index.js'
@@ -16,6 +16,7 @@ import { assignGroup, filterCollideMask, FILTER_GROUP_OWNER_CAPSULE, FILTER_GROU
 import { setImmersiveState } from '../immersive/immersiveState.js'
 import { createInventoryUI2D } from '../inventory.js'
 import { initPointerDown } from '../controllers/pointerDown.js'
+import { initCameraPanning } from '../controllers/cameraPanning.js'
 const log = console.log
 
 let players = []
@@ -88,6 +89,7 @@ export async function createScene(_engine) {
     initAudioControl(cam)
     initKeyControls(scene)
     initPointerDown(scene)
+    initCameraPanning(xrHelper)
     await initVrStickControls(scene, xrHelper)
 
     scene.registerBeforeRender(() => {      

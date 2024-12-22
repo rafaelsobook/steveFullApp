@@ -29,7 +29,7 @@ export function setGizmo(_gizmoManager, scene){
             if(pickedMesh && gm.attachableMeshes){                
                 let selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
                 if(!selectedMeshWithGizmo) return changeGizmo(false) // hide gizmo if the mesh has no gizmo attached
-                changeGizmo(true)                
+                changeGizmo(false, false, true, false)                
             }
         }
     })
@@ -57,7 +57,12 @@ export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo,
     gm.scaleGizmoEnabled  = isScalingGizmo
     gm.boundingBoxGizmoEnabled   = isBoundingBoxGizmo
     gm.updateGizmoRotationToMatchAttachedMesh = false
-
+    const boundingGizmo = gm.gizmos.boundingBoxGizmo
+    log(boundingGizmo)
+    if (boundingGizmo) {
+        log(boundingGizmo.uniformScaling)
+        //  = true;
+    }
     return true
 }
 
