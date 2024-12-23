@@ -60,7 +60,7 @@ export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo,
     const boundingGizmo = gm.gizmos.boundingBoxGizmo
     log(boundingGizmo)
     if (boundingGizmo) {
-        log(boundingGizmo.uniformScaling)
+        // log(boundingGizmo.uniformScaling)
         //  = true;
     }
     return true
