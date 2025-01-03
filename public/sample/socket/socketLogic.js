@@ -142,9 +142,20 @@ export function initializeRoom() {
       sceneModel.position.x = modelData.pos.x
       sceneModel.position.y = modelData.pos.y
       sceneModel.position.z = modelData.pos.z
+      // log(modelData)
+      // log(modelData.name, modelData.rotq)
+      if(sceneModel.rotationQuaternion && modelData.rotQ){
+        // log(sceneModel.rotationQuaternion)
+        log(`${sceneModel.name} updating rotq`)
+        sceneModel.rotationQuaternion.x = modelData.rotQ.x
+        sceneModel.rotationQuaternion.y = modelData.rotQ.y
+        sceneModel.rotationQuaternion.z = modelData.rotQ.z
+        sceneModel.rotationQuaternion.w = modelData.rotQ.w
+      }
       const description = importedModelsInServer.find(desc => desc._id === modelData._id)
       if(description){
         description.pos = modelData.pos
+        description.rotQ = modelData.rotQ
       }
     })
   })

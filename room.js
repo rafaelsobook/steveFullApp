@@ -69,6 +69,7 @@ async function updateFileOnGitHub(content, sha, roomId) {
       }
     );
     log("File updated successfully:", response.data.commit.html_url);
+    // log(response.data)
   } catch (error) {
     log("Error updating the file:", error.message);
     throw error;

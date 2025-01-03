@@ -20,6 +20,15 @@ export function setGizmo(_gizmoManager, scene){
         onGizmoMoved()
     });
 
+    gm.boundingBoxGizmoEnabled = true
+    gm.gizmos.boundingBoxGizmo.onRotationSphereDragEndObservable.add(() => {
+        console.log("Bounding box Rotated");
+        onGizmoMoved();
+    });
+    gm.gizmos.boundingBoxGizmo.onDragStartObservable.add(() => {
+        console.log("Bounding box DragStarted");
+        // onGizmoMoved();
+    });
     changeGizmo(true)
     scene.onPointerObservable.add((evt) => {
         
@@ -29,7 +38,7 @@ export function setGizmo(_gizmoManager, scene){
             if(pickedMesh && gm.attachableMeshes){                
                 let selectedMeshWithGizmo = gm.attachableMeshes.find(mesh => mesh.name === pickedMesh.name)
                 if(!selectedMeshWithGizmo) return changeGizmo(false) // hide gizmo if the mesh has no gizmo attached
-                changeGizmo(false, false, true, false)                
+                changeGizmo(true, false, true, false)
             }
         }
     })
@@ -57,12 +66,8 @@ export function changeGizmo(isPositionGizmo, isRotationGizmo,isBoundingBoxGizmo,
     gm.scaleGizmoEnabled  = isScalingGizmo
     gm.boundingBoxGizmoEnabled   = isBoundingBoxGizmo
     gm.updateGizmoRotationToMatchAttachedMesh = false
-    const boundingGizmo = gm.gizmos.boundingBoxGizmo
-    log(boundingGizmo)
-    if (boundingGizmo) {
-        // log(boundingGizmo.uniformScaling)
-        //  = true;
-    }
+    // const boundingGizmo = gm.gizmos.boundingBoxGizmo
+
     return true
 }
 
@@ -73,10 +78,12 @@ function onGizmoMoved() {
     if(gm.attachedMesh){
         const socket = getSocket() 
         const pos = gm.attachedMesh.position
-        const rot = gm.attachedMesh.rotation
+        const rot = gm.attachedMesh.rotationQuaternion
+        
+        log(gm.attachedMesh.name, gm.attachedMesh.rotationQuaternion)
         socket.emit("moved-object", {
             pos: {x: pos.x,y:pos.y,z:pos.z},
-            rot: {x: rot.x,y:rot.y,z:rot.z},
+            rotQ: {x: rot.x,y:rot.y,z:rot.z, w: rot.w},
             _id: gm.attachedMesh.id,
             roomNum: getMyDetail().roomNum
         })

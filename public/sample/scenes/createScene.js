@@ -390,6 +390,7 @@ export function checkSceneModels(){
             
                     model.position = new Vector3(pos.x,pos.y,pos.z)
                     model.scaling = new Vector3(scale.x,scale.y,scale.z)
+                    model.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z,rotQ.w)
                     model.id = _id
     
                     if(socketModel.hasGizmos) attachToGizmoArray(model)
@@ -428,7 +429,7 @@ export function checkSceneModels(){
                         
                         mainMesh.scaling = new Vector3(scale.x,scale.y,scale.z)
                         mainMesh.position = new Vector3(pos.x, pos.y, pos.z)
-                        // if(rotQ) mainMesh.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z, rotQ.w)
+                        if(rotQ) mainMesh.rotationQuaternion = new Quaternion(rotQ.x,rotQ.y,rotQ.z, rotQ.w)
                         
                         mainMesh.id = socketModel._id
 

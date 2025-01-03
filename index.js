@@ -214,14 +214,17 @@ io.on("connection", socket => {
             io.to(roomNum).emit("toggle-visibility", room.sceneDescription)
         }
     })
-    socket.on("moved-object", data => {
+    socket.on("moved-object", async data => {
         const room = rooms.get(data.roomNum)
         if(!room) return log("moving object from invalid room")
         const objectMoved = room.sceneDescription.find(mesh => mesh._id === data._id)
         if(!objectMoved) return log("object moved or rotated not found")
 
         objectMoved.pos = data.pos
-        saveChangeDescription(room.sceneDescription, '1')
+        objectMoved.rotQ = data.rotQ
+        log(data.rotQ)
+        
+        await saveChangeDescription(room.sceneDescription, data.roomNum)
         io.to(data.roomNum).emit("moved-object", room.sceneDescription)
     })
     socket.on("trigger-bullet", data => {
