@@ -146,7 +146,7 @@ export function initializeRoom() {
       // log(modelData.name, modelData.rotq)
       if(sceneModel.rotationQuaternion && modelData.rotQ){
         // log(sceneModel.rotationQuaternion)
-        log(`${sceneModel.name} updating rotq`)
+        // log(`${sceneModel.name} updating rotq`)
         sceneModel.rotationQuaternion.x = modelData.rotQ.x
         sceneModel.rotationQuaternion.y = modelData.rotQ.y
         sceneModel.rotationQuaternion.z = modelData.rotQ.z
